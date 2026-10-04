@@ -35,8 +35,14 @@ Sistema web para control de padrón electoral y registro de asistencia/votos dis
 ## Estructura del Proyecto
 
 ```
-├── index.html          # Aplicación completa (HTML + CSS + JS)
-└── README.md           # Esta documentación
+├── index.html              # Aplicación completa (HTML + CSS + JS)
+├── README.md               # Esta documentación
+├── convert_excel.js        # Script para convertir Excel crudo a formato padrón
+├── convert_libro1.js       # Script específico para formato Libro1.xlsx (MESA, ORDEN, CEDULA, NOMBRE, APELLIDO, REFERENTE)
+├── Libro1.xlsx             # Datos fuente (11,600 registros) - formato origen
+├── padron_importar.xlsx    # Datos convertidos listos para importar (11,600 registros: cedula, nombre, orden, mesa, referente, zona_votacion)
+├── temp_data.json          # Backup temporal de datos
+└── supabase.min.js         # Cliente Supabase local (CDN fallback)
 ```
 
 ## Requisitos Previos
@@ -100,6 +106,7 @@ create table padron (
   orden integer,
   mesa integer,
   referente text,
+  zona_votacion text,
   ya_registrado boolean default false,
   fecha_registro timestamptz,
   registrado_por text
@@ -257,11 +264,31 @@ insert into sedes (nombre) values
 ### Cargar Padrón (Excel)
 
 1. Botón **"Cargar Padrón"** → selecciona `.xlsx`/`.xls`
-2. Columnas: `cedula`, `nombre` (requeridas) + `orden`, `mesa`, `referente` (opcionales)
+2. Columnas: `cedula`, `nombre` (requeridas) + `orden`, `mesa`, `referente`, `zona_votacion` (opcionales)
 3. **Duplicados**: se eliminan automáticamente (keep last)
 4. Vista previa de primeras 5 filas con ejemplo de formato
 5. **"Importar Padrón"** → lotes de 500, barra progreso, `ignoreDuplicates: true`
 6. **Upsert**: actualiza nombres si cédula existe, **no toca** `ya_registrado` ni `fecha_registro`
+
+### Preparar Excel desde formato crudo (Scripts incluidos)
+
+El proyecto incluye scripts para convertir Excel con columnas sucias al formato estándar:
+
+| Archivo origen | Script | Formato origen | Formato destino |
+|---|---|---|---|
+| `Reporte_Referentes_Merged-10.xlsx` | `convert_excel.js` | `Referente, Teléfono, Zona, Nombre, Cédula, Tel, Orden, Mesa, Estado, Colegio` | `cedula, nombre, orden, mesa, referente, zona_votacion` |
+| `Libro1.xlsx` | `convert_libro1.js` | `MESA, ORDEN, CEDULA, NOMBRE, APELLIDO, REFERENTE` | `cedula, nombre, orden, mesa, referente, zona_votacion` |
+
+**Uso:**
+```bash
+# Para Reporte_Referentes_Merged-10.xlsx
+node convert_excel.js
+
+# Para Libro1.xlsx
+node convert_libro1.js
+```
+
+Ambos generan `padron_importar.xlsx` listo para usar en "Cargar Padrón" (últimos 11,600 registros procesados).
 
 ### Backup / Restore (Menú ▼)
 - **Exportar Backup (JSON)**: Descarga todo (padrón + usuarios + log + config)
@@ -297,6 +324,7 @@ insert into sedes (nombre) values
 | `orden` | INTEGER | N° de orden en mesa (opcional) |
 | `mesa` | INTEGER | N° de mesa receptora (opcional) |
 | `referente` | TEXT | Nombre del referente (opcional) |
+| `zona_votacion` | TEXT | Escuela/colegio de votación (opcional) |
 | `ya_registrado` | BOOLEAN | Default: false |
 | `fecha_registro` | TIMESTAMPTZ | Nullable, ISO 8601 |
 | `registrado_por` | TEXT | Nombre del operador |
