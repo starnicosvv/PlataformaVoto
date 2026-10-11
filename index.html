@@ -1486,21 +1486,22 @@ function updateStats() {
                     if (decrypted && Array.isArray(decrypted)) {
                         activityLog = decrypted;
                     } else {
-                        // Data might be legacy plain JSON
+                        // Decryption failed or returned null - data might be legacy plain JSON
+                        // Try to parse as plain JSON, but if that fails, just use empty array
                         try {
-                            activityLog = JSON.parse(saved);
-                            await saveActivityLog(); // Migrar a encriptado
+                            const parsed = JSON.parse(saved);
+                            if (Array.isArray(parsed)) {
+                                activityLog = parsed;
+                                await saveActivityLog(); // Migrar a encriptado
+                            } else {
+                                activityLog = [];
+                            }
                         } catch {
                             activityLog = [];
                         }
                     }
                 } catch {
-                    try {
-                        activityLog = JSON.parse(saved);
-                        await saveActivityLog();
-                    } catch {
-                        activityLog = [];
-                    }
+                    activityLog = [];
                 }
             }
         }
