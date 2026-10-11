@@ -1579,11 +1579,32 @@ function updateStats() {
 
         async function checkLoginAndInit() {
             if (demoMode) {
-                // Demo mode: usar localStorage como antes
+                // Demo mode: check for saved currentUser first
                 await loadActivityLog();
                 renderActivity();
-                // En modo demo, currentUser se maneja diferente (ver login demo)
-                // Por ahora abrimos login modal
+                
+                // Check for saved user session
+                const savedUser = localStorage.getItem('padron_current_user');
+                if (savedUser) {
+                    try {
+                        currentUser = JSON.parse(savedUser);
+                        updateUserBadge();
+                        const app = $('#app');
+                        const modal = $('#login-modal');
+                        app.classList.remove('hidden');
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        modal.style.display = 'none';
+                        app.offsetHeight;
+                        $('#cedula-input').focus();
+                        return;
+                    } catch {
+                        // Invalid saved user, clear and show login
+                        localStorage.removeItem('padron_current_user');
+                    }
+                }
+                
+                // No valid session, show login
                 $('#app').classList.add('hidden');
                 openLoginModal();
                 return;
