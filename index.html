@@ -1558,11 +1558,11 @@ function updateStats() {
             }
         }
 
-        function enableDemoMode() {
+        async function enableDemoMode() {
             demoMode = true;
-            loadDemoData();
+            await loadDemoData();
             updateModeButton();
-            checkLoginAndInit();
+            await checkLoginAndInit();
         }
 
         async function switchToSupabase() {
@@ -3118,35 +3118,42 @@ function updateStats() {
         // INICIALIZACIÓN
         // ============================================
         async function init() {
-            initEvents();
-            loadActivityLog();
+            try {
+                initEvents();
+                await loadActivityLog();
 
-            // Online/Offline detection
-            window.addEventListener('online', () => {
-                $('#offline-banner').classList.add('hidden');
-                if (!demoMode && sbClient) updateStats();
-                showToast('Conexión restablecida', 'success');
-            });
-            window.addEventListener('offline', () => {
-                $('#offline-banner').classList.remove('hidden');
-                showToast('Sin conexión — modo offline', 'warning', 5000);
-            });
-            if (!navigator.onLine) $('#offline-banner').classList.remove('hidden');
+                // Online/Offline detection
+                window.addEventListener('online', () => {
+                    $('#offline-banner').classList.add('hidden');
+                    if (!demoMode && sbClient) updateStats();
+                    showToast('Conexión restablecida', 'success');
+                });
+                window.addEventListener('offline', () => {
+                    $('#offline-banner').classList.remove('hidden');
+                    showToast('Sin conexión — modo offline', 'warning', 5000);
+                });
+                if (!navigator.onLine) $('#offline-banner').classList.remove('hidden');
 
-            // MODO PRODUCCIÓN: Auto-conectar a Supabase si PRODUCTION_CONFIG.enabled = true
-            if (PRODUCTION_CONFIG.enabled && PRODUCTION_CONFIG.url && PRODUCTION_CONFIG.key) {
-                // Guardar en localStorage para persistencia
-                saveConfig(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
-                initSupabase(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
-                // No mostrar botón de modo demo
-                $('#toggle-mode').style.display = 'none';
-                await checkLoginAndInit();
-            } else if (loadSavedConfig()) {
-                // Config guardada en localStorage
-                await checkLoginAndInit();
-            } else {
-                // Fallback: modo demo
-                enableDemoMode();
+                // MODO PRODUCCIÓN: Auto-conectar a Supabase si PRODUCTION_CONFIG.enabled = true
+                if (PRODUCTION_CONFIG.enabled && PRODUCTION_CONFIG.url && PRODUCTION_CONFIG.key) {
+                    // Guardar en localStorage para persistencia
+                    saveConfig(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
+                    initSupabase(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
+                    // No mostrar botón de modo demo
+                    $('#toggle-mode').style.display = 'none';
+                    await checkLoginAndInit();
+                } else if (loadSavedConfig()) {
+                    // Config guardada en localStorage
+                    await checkLoginAndInit();
+                } else {
+                    // Fallback: modo demo
+                    await enableDemoMode();
+                }
+            } catch (err) {
+                console.error('Init error:', err);
+                // Ensure login modal is shown even on error
+                $('#app').classList.add('hidden');
+                openLoginModal();
             }
         }
 
