@@ -10,6 +10,28 @@
     <title>Sistema de Control de Padrón Electoral</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗳️</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: {
+            50: '#eff6ff',
+            100: '#dbeafe',
+            200: '#bfdbfe',
+            300: '#93c5fd',
+            400: '#60a5fa',
+            500: '#3b82f6',
+            600: '#2563eb',
+            700: '#1d4ed8',
+            800: '#1e40af',
+            900: '#1e3a8a',
+          }
+        }
+      }
+    }
+  }
+</script>
     <script src="supabase.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -49,25 +71,42 @@
             .main-content.expanded { margin-left: 0; }
         }
         .table-row:hover { background-color: #f9fafb; }
-        .status-badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
-        .status-pending { @apply bg-amber-100 text-amber-800; }
-        .status-registered { @apply bg-green-100 text-green-800; }
-        .btn-primary { @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors; }
-        .btn-secondary { @apply inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors; }
-        .btn-danger { @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors; }
-        .input-field { @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm; }
-        .label-field { @apply block text-sm font-medium text-gray-700 mb-1; }
-        .card { @apply bg-white shadow-sm rounded-lg border border-gray-200; }
-        .card-header { @apply px-6 py-4 border-b border-gray-200; }
-        .card-body { @apply p-6; }
-        .stat-card { @apply bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200; }
-        .modal-overlay { @apply fixed inset-0 z-50 overflow-y-auto bg-black/50; }
-        .modal-content { @apply bg-white rounded-lg shadow-xl max-w-lg w-full mx-4; }
         
-        /* Tailwind config for primary colors */
-        @tailwind base;
-        @tailwind components;
-        @tailwind utilities;
+        /* Status badges */
+        .status-badge { display: inline-flex; align-items: center; padding: 0.125rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-registered { background-color: #dcfce7; color: #166534; }
+        
+        /* Buttons */
+        .btn-primary { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border: 1px solid transparent; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; color: white; background-color: #2563eb; transition: background-color 0.15s; }
+        .btn-primary:hover { background-color: #1d4ed8; }
+        .btn-primary:focus { outline: none; box-shadow: 0 0 0 2px white, 0 0 0 4px #3b82f6; }
+        
+        .btn-secondary { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border: 1px solid #d1d5db; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; color: #374151; background-color: white; transition: background-color 0.15s; }
+        .btn-secondary:hover { background-color: #f9fafb; }
+        .btn-secondary:focus { outline: none; box-shadow: 0 0 0 2px white, 0 0 0 4px #3b82f6; }
+        
+        .btn-danger { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border: 1px solid transparent; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; color: white; background-color: #dc2626; transition: background-color 0.15s; }
+        .btn-danger:hover { background-color: #b91c1c; }
+        .btn-danger:focus { outline: none; box-shadow: 0 0 0 2px white, 0 0 0 4px #ef4444; }
+        
+        /* Form fields */
+        .input-field { display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); outline: none; }
+        .input-field::placeholder { color: #9ca3af; }
+        .input-field:focus { outline: none; box-shadow: 0 0 0 2px #3b82f6; border-color: #3b82f6; }
+        @media (min-width: 640px) { .input-field { font-size: 0.875rem; } }
+        
+        .label-field { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
+        
+        /* Cards */
+        .card { background-color: white; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+        .card-header { padding: 1.5rem; border-bottom: 1px solid #e5e7eb; }
+        .card-body { padding: 1.5rem; }
+        .stat-card { background-color: white; overflow: hidden; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+        
+        /* Modals */
+        .modal-overlay { position: fixed; inset: 0; z-index: 50; overflow-y: auto; background-color: rgb(0 0 0 / 0.5); }
+        .modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); max-width: 32rem; width: 100%; margin-left: 1rem; margin-right: 1rem; }
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
