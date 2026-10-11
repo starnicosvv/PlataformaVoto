@@ -1086,9 +1086,10 @@
             const badge = $('#user-badge');
             const nameEl = $('#current-user-name');
             const sedeEl = $('#current-user-sede');
-            if (currentProfile) {
-                nameEl.textContent = currentProfile.name;
-                if (sedeEl) sedeEl.textContent = currentProfile.sede_nombre;
+            const user = currentProfile || currentUser;
+            if (user) {
+                nameEl.textContent = user.name;
+                if (sedeEl) sedeEl.textContent = currentProfile?.sede_nombre || '';
                 badge.classList.remove('hidden');
                 badge.classList.add('flex');
             } else {
