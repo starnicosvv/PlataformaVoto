@@ -795,7 +795,7 @@
                 if (!text) return '';
                 return String(text).trim()
                     .replace(/"/g, '"')
-                    .replace(/'/g, ''')
+                    .replace(/'/g, "'")
                     .replace(/</g, '<')
                     .replace(/>/g, '>');
             },
