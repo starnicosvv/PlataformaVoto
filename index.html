@@ -1158,12 +1158,54 @@
             `;
             
             try {
-                await signIn(emailValidation.clean, password);
-                await loadCurrentSession();
-                closeLoginModal();
-                showToast(`Bienvenido, ${currentProfile.name}`, 'success');
-                auditLog('LOGIN_SUCCESS', { email: emailValidation.clean });
-                checkLoginAndInit();
+                if (demoMode) {
+                    // Demo mode: login simple con localStorage
+                    await new Promise(r => setTimeout(r, 300));
+                    
+                    // Cargar usuarios demo
+                    let users = [];
+                    const saved = localStorage.getItem('padron_users');
+                    if (saved) {
+                        try {
+                            const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                            users = decrypted || JSON.parse(saved);
+                        } catch {
+                            users = JSON.parse(saved);
+                        }
+                    }
+                    
+                    // Buscar usuario (en demo, email = nombre de usuario)
+                    let user = users.find(u => u.email === emailValidation.clean || u.name === emailValidation.clean);
+                    
+                    if (!user) {
+                        // Crear usuario demo nuevo
+                        user = {
+                            id: Security.generateSecureId(),
+                            name: emailValidation.clean.split('@')[0],
+                            email: emailValidation.clean,
+                            created_at: new Date().toISOString()
+                        };
+                        users.push(user);
+                        const encrypted = await Security.encryptData(users, getEncryptionKey());
+                        if (encrypted) localStorage.setItem('padron_users', encrypted);
+                        else localStorage.setItem('padron_users', JSON.stringify(users));
+                    }
+                    
+                    currentUser = { id: user.id, name: user.name };
+                    localStorage.setItem('padron_current_user', JSON.stringify(currentUser));
+                    
+                    closeLoginModal();
+                    showToast(`Bienvenido, ${currentUser.name} (Demo)`, 'success');
+                    auditLog('LOGIN_SUCCESS', { email: emailValidation.clean, mode: 'demo' });
+                    checkLoginAndInit();
+                } else {
+                    await signIn(emailValidation.clean, password);
+                    await loadCurrentSession();
+                    closeLoginModal();
+                    showToast(`Bienvenido, ${currentProfile.name}`, 'success');
+                    auditLog('LOGIN_SUCCESS', { email: emailValidation.clean });
+                    checkLoginAndInit();
+                }
             } catch (err) {
                 errorEl.textContent = err.message.includes('Invalid login credentials') 
                     ? 'Email o contraseña incorrectos' 
