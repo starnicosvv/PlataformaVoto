@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     <title>Sistema de Control de Padrón Electoral</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗳️</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -32,6 +36,38 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .confirm-modal { animation: zoomIn 0.2s ease-out; }
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Professional Admin Dashboard Styles */
+        .sidebar { transition: transform 0.3s ease; }
+        .sidebar.collapsed { transform: translateX(-100%); }
+        .main-content { transition: margin-left 0.3s ease; }
+        .main-content.expanded { margin-left: 0; }
+        @media (min-width: 1024px) {
+            .sidebar { transform: translateX(0); }
+            .main-content { margin-left: 260px; }
+            .sidebar.collapsed { transform: translateX(-260px); }
+            .main-content.expanded { margin-left: 0; }
+        }
+        .table-row:hover { background-color: #f9fafb; }
+        .status-badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium; }
+        .status-pending { @apply bg-amber-100 text-amber-800; }
+        .status-registered { @apply bg-green-100 text-green-800; }
+        .btn-primary { @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors; }
+        .btn-secondary { @apply inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors; }
+        .btn-danger { @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors; }
+        .input-field { @apply block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm; }
+        .label-field { @apply block text-sm font-medium text-gray-700 mb-1; }
+        .card { @apply bg-white shadow-sm rounded-lg border border-gray-200; }
+        .card-header { @apply px-6 py-4 border-b border-gray-200; }
+        .card-body { @apply p-6; }
+        .stat-card { @apply bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200; }
+        .modal-overlay { @apply fixed inset-0 z-50 overflow-y-auto bg-black/50; }
+        .modal-content { @apply bg-white rounded-lg shadow-xl max-w-lg w-full mx-4; }
+        
+        /* Tailwind config for primary colors */
+        @tailwind base;
+        @tailwind components;
+        @tailwind utilities;
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -47,59 +83,59 @@
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 card-enter">
-            <div class="flex items-center justify-center mb-6">
-                <div class="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+    <div id="login-modal" class="modal-overlay flex items-center justify-center p-4">
+        <div class="modal-content card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Iniciar Sesión</h2>
                 </div>
             </div>
-            <h2 class="text-2xl font-bold text-gray-900 text-center mb-2">Iniciar Sesión</h2>
-            <p class="text-gray-600 text-center mb-6">Ingresa tus credenciales</p>
-            
-            <!-- Login Form -->
-            <div id="login-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="login-email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="usuario@sede.com" autocomplete="email">
+            <div class="card-body">
+                <p class="text-gray-600 mb-6">Ingresa tus credenciales para acceder al sistema</p>
+                
+                <!-- Login Form -->
+                <div id="login-form" class="space-y-4">
+                    <div>
+                        <label class="label-field" for="login-email">Email</label>
+                        <input type="email" id="login-email" class="input-field" placeholder="usuario@sede.com" autocomplete="email">
+                    </div>
+                    <div>
+                        <label class="label-field" for="login-password">Contraseña</label>
+                        <input type="password" id="login-password" class="input-field" placeholder="Contraseña" autocomplete="current-password">
+                    </div>
+                    <button id="login-btn" class="btn-primary w-full">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m4 4H7m14 0l-4 4m0 0l-4-4m4 4H3"></path></svg>
+                        Iniciar Sesión
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                    <input type="password" id="login-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Contraseña" autocomplete="current-password">
-                </div>
-                <button id="login-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m4 4H7m14 0l-4 4m0 0l-4-4m4 4H3"></path></svg>
-                    Iniciar Sesión
-                </button>
-            </div>
-            
-            <!-- Register Form (Admin only - hidden by default) -->
-            <div id="register-form" class="hidden space-y-4 mt-4 border-t border-gray-200 pt-4">
-                <h3 class="text-lg font-semibold text-gray-900 text-center">Crear Usuario (Admin)</h3>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="reg-email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="nuevo@sede.com" autocomplete="email">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                    <input type="password" id="reg-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Mínimo 6 caracteres" autocomplete="new-password" minlength="6">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
-                    <input type="text" id="reg-name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Juan Pérez" maxlength="50">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Sede</label>
-                    <select id="reg-sede" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20">
-                        <option value="">Seleccionar sede</option>
-                    </select>
-                </div>
+                
+                <!-- Register Form (Admin only - hidden by default) -->
+                <div id="register-form" class="hidden space-y-4 mt-6 border-t border-gray-200 pt-6">
+                    <h3 class="text-lg font-semibold text-gray-900">Crear Usuario (Admin)</h3>
+                    <div>
+                        <label class="label-field" for="reg-email">Email</label>
+                        <input type="email" id="reg-email" class="input-field" placeholder="nuevo@sede.com" autocomplete="email">
+                    </div>
+                    <div>
+                        <label class="label-field" for="reg-password">Contraseña</label>
+                        <input type="password" id="reg-password" class="input-field" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8">
+                    </div>
+                    <div>
+                        <label class="label-field" for="reg-name">Nombre completo</label>
+                        <input type="text" id="reg-name" class="input-field" placeholder="Juan Pérez" maxlength="100">
+                    </div>
+                    <div>
+                        <label class="label-field" for="reg-sede">Sede</label>
+                        <select id="reg-sede" class="input-field">
+                            <option value="">Seleccionar sede</option>
+                        </select>
+                    </div>
                 <button id="register-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">Crear Usuario</button>
                 <button id="show-login-btn" type="button" class="w-full text-center text-sm text-gray-600 hover:text-gray-800">Volver a iniciar sesión</button>
             </div>
             
             <div class="text-center mt-4">
-                <button id="show-register-btn" type="button" class="text-sm text-blue-600 hover:text-blue-800">¿Eres admin? Crear usuario</button>
+                <button id="show-register-btn" type="button" class="text-sm text-primary-600 hover:text-primary-800">¿Eres admin? Crear usuario</button>
             </div>
             
             <div id="login-error" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
@@ -107,60 +143,69 @@
     </div>
 
     <!-- Config Modal -->
-    <div id="config-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 card-enter">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-gray-900">Configuración Supabase</h2>
-                <button id="close-config" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
-            </div>
-            <p class="text-gray-600 mb-6">Ingresa tus credenciales de Supabase para conectar el sistema. Se guardarán en tu navegador.</p>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">URL de Supabase</label>
-                    <input type="text" id="supabase-url" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="https://xxxx.supabase.co">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Clave Anónima (Anon Key)</label>
-                    <input type="password" id="supabase-key" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+    <div id="config-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Configuración Supabase</h2>
+                    <button id="close-config" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                 </div>
             </div>
-            <div class="flex gap-3 mt-6">
-                <button id="save-config" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">Guardar y Conectar</button>
-                <button id="skip-config" class="px-4 py-3 text-gray-600 hover:text-gray-800 font-medium">Omitir</button>
-                <button id="clear-config" class="px-4 py-3 text-red-600 hover:text-red-800 font-medium border border-red-300 rounded-lg transition-colors" title="Borrar configuración guardada">Limpiar</button>
+            <div class="card-body">
+                <p class="text-gray-600 mb-6">Ingresa tus credenciales de Supabase para conectar el sistema. Se guardarán en tu navegador.</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="label-field" for="supabase-url">URL de Supabase</label>
+                        <input type="text" id="supabase-url" class="input-field" placeholder="https://xxxx.supabase.co">
+                    </div>
+                    <div>
+                        <label class="label-field" for="supabase-key">Clave Anónima (Anon Key)</label>
+                        <input type="password" id="supabase-key" class="input-field" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button id="save-config" class="btn-primary flex-1">Guardar y Conectar</button>
+                    <button id="skip-config" class="btn-secondary">Omitir</button>
+                    <button id="clear-config" class="btn-danger" title="Borrar configuración guardada">Limpiar</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Confirm Clear Config Modal -->
-    <div id="confirm-clear-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4 confirm-modal-overlay">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 card-enter confirm-modal">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold text-gray-900">Confirmar limpieza</h2>
+    <div id="confirm-clear-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content card-enter">
+            <div class="card-header">
+                <h2 class="text-xl font-semibold text-gray-900">Confirmar limpieza</h2>
             </div>
-            <p class="text-gray-600 mb-6">¿Borrar la configuración de Supabase guardada? Se cerrará la sesión y deberás ingresar las credenciales nuevamente.</p>
-            <div class="flex gap-3 justify-end">
-                <button id="cancel-clear-config" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">Cancelar</button>
-                <button id="confirm-clear-config" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors">Sí, borrar</button>
+            <div class="card-body">
+                <p class="text-gray-600 mb-6">¿Borrar la configuración de Supabase guardada? Se cerrará la sesión y deberás ingresar las credenciales nuevamente.</p>
+                <div class="flex gap-3 justify-end">
+                    <button id="cancel-clear-config" class="btn-secondary">Cancelar</button>
+                    <button id="confirm-clear-config" class="btn-danger">Sí, borrar</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Register Unknown Modal -->
-    <div id="register-unknown-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 card-enter">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-gray-900">Registrar Persona Desconocida</h2>
-                <button id="close-unknown" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    <div id="register-unknown-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Registrar Persona Desconocida</h2>
+                    <button id="close-unknown" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
             </div>
-            <p class="text-gray-600 mb-4">La cédula <span id="unknown-cedula" class="font-mono font-medium text-gray-900"></span> no está en el padrón.</p>
-            <p class="text-sm text-gray-500 mb-2">Ingresa los datos para registrarla:</p>
-            <p class="text-xs text-amber-600 mb-4">💡 Consultá <a href="https://padron.tsje.gov.py/" target="_blank" class="underline">padron.tsje.gov.py</a> para ver Orden y Mesa</p>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
-                <input type="text" id="unknown-nombre" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Nombre y apellido" maxlength="100" autocomplete="off">
-            </div>
-            <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="card-body">
+                <p class="text-gray-600 mb-4">La cédula <span id="unknown-cedula" class="font-mono font-medium text-gray-900"></span> no está en el padrón.</p>
+                <p class="text-sm text-gray-500 mb-2">Ingresa los datos para registrarla:</p>
+                <p class="text-xs text-amber-600 mb-4">💡 Consultá <a href="https://padron.tsje.gov.py/" target="_blank" class="underline">padron.tsje.gov.py</a> para ver Orden y Mesa</p>
+                <div class="mb-4">
+                    <label class="label-field" for="unknown-nombre">Nombre completo</label>
+                    <input type="text" id="unknown-nombre" class="input-field" placeholder="Nombre y apellido" maxlength="100" autocomplete="off">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Orden (opcional)</label>
                     <input type="number" id="unknown-orden" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="N° orden" min="1" autocomplete="off">
@@ -277,10 +322,10 @@
 <!-- Main App -->
     <div id="app" class="hidden">
         <!-- Header -->
-<header class="bg-white border-b border-gray-200 sticky top-0 z-40">
-            <div class="max-w-4xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center">
+                    <div class="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                     </div>
                     <div>
@@ -293,8 +338,8 @@
                         <span id="status-dot" class="w-2 h-2 rounded-full bg-gray-400"></span>
                         <span id="status-text">Desconectado</span>
                     </span>
-                    <button id="toggle-mode" class="px-3 py-1.5 text-sm bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg flex items-center gap-1 transition-colors" title="Cambiar entre Modo Demo y Supabase">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                    <button id="toggle-mode" class="btn-secondary text-sm" title="Cambiar entre Modo Demo y Supabase">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
                         <span id="mode-text">Modo Demo</span>
                     </button>
                     <div id="user-badge" class="hidden items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-medium border border-green-200">
@@ -305,10 +350,10 @@
                     </div>
                     <!-- Menu Dropdown -->
                     <div class="relative" id="menu-dropdown">
-                        <button id="menu-btn" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1" title="Menú">
+                        <button id="menu-btn" class="btn-secondary text-sm" title="Menú">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                         </button>
-                        <div id="menu-content" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50">
+                        <div id="menu-content" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                             <button id="menu-log" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                                 Ver Log de Actividad
@@ -332,12 +377,12 @@
                             </button>
                         </div>
                     </div>
-                    <button id="open-config" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <button id="open-config" class="btn-secondary text-sm">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 001.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         Config
                     </button>
-                    <button id="open-import" class="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg flex items-center gap-1 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <button id="open-import" class="btn-primary text-sm">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         Cargar Padrón
                     </button>
                 </div>
@@ -352,41 +397,47 @@
                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total en Padrón</p>
                     <p id="stat-total" class="text-3xl font-bold text-gray-900 mt-1">-</p>
                 </div>
-                <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                <div class="stat-card p-6">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total en Padrón</p>
+                    <p id="stat-total" class="text-3xl font-bold text-gray-900 mt-1">-</p>
+                </div>
+                <div class="stat-card p-6">
                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Ya Registrados</p>
                     <p id="stat-voted" class="text-3xl font-bold text-green-600 mt-1">-</p>
                 </div>
-                <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                <div class="stat-card p-6">
                     <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Pendientes</p>
                     <p id="stat-pending" class="text-3xl font-bold text-amber-600 mt-1">-</p>
                 </div>
             </div>
 
             <!-- Search Section -->
-            <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 mb-8 card-enter">
-                <div class="text-center mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900">Buscar por Cédula</h2>
-                    <p class="text-sm text-gray-500 mt-1">Presiona ENTER para consultar</p>
-                </div>
-                <div class="max-w-xl mx-auto">
-                    <div class="relative">
-                        <input
-                            type="text"
-                            id="cedula-input"
-                            class="input-cedula w-full px-6 py-5 border-2 border-gray-200 rounded-xl focus-ring focus:border-green-500 focus:ring-2 focus:ring-green-500/20 bg-gray-50 placeholder-gray-400"
-                            placeholder="Ingrese número de cédula"
-                            autocomplete="off"
-                            spellcheck="false"
-                            inputmode="numeric"
-                        >
-                        <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        </div>
+            <section class="card mb-8 card-enter">
+                <div class="card-body">
+                    <div class="text-center mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900">Buscar por Cédula</h2>
+                        <p class="text-sm text-gray-500 mt-1">Presiona ENTER para consultar</p>
                     </div>
-                    <button id="search-btn" class="mt-4 w-full md:w-auto md:ml-4 px-8 py-3.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 mx-auto md:mx-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        Consultar
-                    </button>
+                    <div class="max-w-xl mx-auto">
+                        <div class="relative">
+                            <input
+                                type="text"
+                                id="cedula-input"
+                                class="input-cedula w-full px-6 py-5 border-2 border-gray-200 rounded-xl focus-ring focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 bg-gray-50 placeholder-gray-400"
+                                placeholder="Ingrese número de cédula"
+                                autocomplete="off"
+                                spellcheck="false"
+                                inputmode="numeric"
+                            >
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                        </div>
+                        <button id="search-btn" class="btn-primary mt-4 w-full md:w-auto md:ml-4 mx-auto md:mx-0">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            Consultar
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -399,68 +450,73 @@
             <section id="activity-section" class="hidden">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-gray-900">Actividad Reciente</h3>
-                    <button id="clear-activity" class="text-sm text-gray-500 hover:text-gray-700">Limpiar</button>
+                    <button id="clear-activity" class="btn-secondary text-sm">Limpiar</button>
                 </div>
-                <div id="activity-list" class="bg-white rounded-xl border border-gray-100 divide-y divide-gray-100 max-h-64 overflow-y-auto"></div>
+                <div id="activity-list" class="card overflow-hidden">
+                    <div id="activity-content" class="divide-y divide-gray-100 max-h-64 overflow-y-auto"></div>
+                </div>
             </section>
         </main>
 
         <!-- Footer -->
         <footer class="bg-white border-t border-gray-200 py-4 px-4">
-            <div class="max-w-4xl mx-auto text-center text-sm text-gray-500">
+            <div class="max-w-7xl mx-auto text-center text-sm text-gray-500">
                 <p>Sistema de Control de Padrón Electoral &copy; 2024</p>
             </div>
         </footer>
     </div>
 
-    <!-- Import Modal -->
-    <div id="import-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 card-enter">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-gray-900">Cargar Padrón desde Excel</h2>
-                <button id="close-import" class="text-gray-400 hover:text-gray-600 text-2xl leading-none p-2" aria-label="Cerrar">&times;</button>
+<!-- Import Modal -->
+    <div id="import-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content max-w-2xl max-h-[80vh] overflow-y-auto card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Cargar Padrón desde Excel</h2>
+                    <button id="close-import" class="text-gray-400 hover:text-gray-600 text-2xl leading-none p-2" aria-label="Cerrar">&times;</button>
+                </div>
             </div>
-            <p class="text-gray-600 mb-4">Selecciona un archivo <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">.xlsx</code> con las columnas <strong>cedula</strong> y <strong>nombre</strong> (opcional: <strong>orden</strong>, <strong>mesa</strong>, <strong>referente</strong>, <strong>zona_votacion</strong>). Se usará <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">upsert</code> para evitar duplicados.</p>
-            <details class="mb-4 group">
-                <summary class="text-sm text-blue-600 hover:text-blue-800 cursor-pointer font-medium flex items-center gap-1">
-                    <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    Ver formato de columnas esperado
-                </summary>
-                <div class="mt-2 p-3 bg-gray-50 rounded-lg text-xs font-mono overflow-x-auto">
-                    <pre class="text-gray-700">cedula, nombre, orden, mesa, referente, zona_votacion
+            <div class="card-body">
+                <p class="text-gray-600 mb-4">Selecciona un archivo <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">.xlsx</code> con las columnas <strong>cedula</strong> y <strong>nombre</strong> (opcional: <strong>orden</strong>, <strong>mesa</strong>, <strong>referente</strong>, <strong>zona_votacion</strong>). Se usará <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">upsert</code> para evitar duplicados.</p>
+                <details class="mb-4 group">
+                    <summary class="text-sm text-primary-600 hover:text-primary-800 cursor-pointer font-medium flex items-center gap-1">
+                        <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        Ver formato de columnas esperado
+                    </summary>
+                    <div class="mt-2 p-3 bg-gray-50 rounded-lg text-xs font-mono overflow-x-auto">
+                        <pre class="text-gray-700">cedula, nombre, orden, mesa, referente, zona_votacion
 1234567, Juan Pérez, 1, 101, Carlos R., Escuela N° 123
 8765432, María López, 2, 101, Ana M., Colegio Nacional</pre>
-                </div>
-            </details>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Archivo Excel</label>
-                <div class="relative">
-                    <input type="file" id="excel-file" accept=".xlsx,.xls" class="hidden">
-                    <button id="select-file" class="w-full border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-500 hover:bg-green-50 transition-colors" type="button">
-                        <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                        <p class="text-gray-600">Haz clic o arrastra el archivo aquí</p>
-                        <p class="text-xs text-gray-400 mt-1">Solo archivos .xlsx / .xls</p>
-                    </button>
-                </div>
-                <p id="file-name" class="text-sm text-gray-500 mt-2 hidden"></p>
-            </div>
-            <div id="import-preview" class="hidden mb-4">
-                <p class="text-sm font-medium text-gray-700 mb-2">Vista previa (primeras 5 filas):</p>
-<div class="overflow-x-auto bg-gray-50 rounded-lg p-3">
-                        <table class="w-full text-sm">
-                            <thead>
-                                <tr class="text-left text-gray-500">
-                                    <th class="pb-2 font-medium">Cédula</th>
-                                    <th class="pb-2 font-medium">Nombre</th>
-                                    <th class="pb-2 font-medium">Orden</th>
-                                    <th class="pb-2 font-medium">Mesa</th>
-                                    <th class="pb-2 font-medium">Referente</th>
-                                    <th class="pb-2 font-medium">Zona Votación</th>
-                                </tr>
-                            </thead>
-                            <tbody id="preview-rows"></tbody>
-                        </table>
                     </div>
+                </details>
+                <div class="mb-4">
+                    <label class="label-field">Archivo Excel</label>
+                    <div class="relative">
+                        <input type="file" id="excel-file" accept=".xlsx,.xls" class="hidden">
+                        <button id="select-file" class="w-full border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary-500 hover:bg-primary-50 transition-colors" type="button">
+                            <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <p class="text-gray-600">Haz clic o arrastra el archivo aquí</p>
+                            <p class="text-xs text-gray-400 mt-1">Solo archivos .xlsx / .xls</p>
+                        </button>
+                    </div>
+                    <p id="file-name" class="text-sm text-gray-500 mt-2 hidden"></p>
+                </div>
+                <div id="import-preview" class="hidden mb-4">
+                    <p class="text-sm font-medium text-gray-700 mb-2">Vista previa (primeras 5 filas):</p>
+<div class="overflow-x-auto bg-gray-50 rounded-lg p-3">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500">
+                                <th class="pb-2 font-medium">Cédula</th>
+                                <th class="pb-2 font-medium">Nombre</th>
+                                <th class="pb-2 font-medium">Orden</th>
+                                <th class="pb-2 font-medium">Mesa</th>
+                                <th class="pb-2 font-medium">Referente</th>
+                                <th class="pb-2 font-medium">Zona Votación</th>
+                            </tr>
+                        </thead>
+                        <tbody id="preview-rows"></tbody>
+                    </table>
+                </div>
                 <p class="text-xs text-gray-500 mt-2" id="preview-count"></p>
             </div>
             <div id="import-progress" class="hidden mb-4">
@@ -474,10 +530,10 @@
             </div>
             <div id="import-result" class="hidden mb-4 p-4 rounded-lg"></div>
             <div class="flex gap-3 pt-4 border-t border-gray-200 mt-4">
-                <button id="import-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <button id="import-btn" class="btn-primary flex-1" disabled>
                     Importar Padrón
                 </button>
-                <button id="cancel-import" class="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium">Cancelar</button>
+                <button id="cancel-import" class="btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
@@ -486,11 +542,12 @@
         // ============================================
         // CONFIGURACIÓN DE PRODUCCIÓN (auto-conectar a Supabase)
         // ============================================
-        // ⚠️ EDITAR AQUÍ TUS CREDENCIALES PARA PRODUCCIÓN
+        // ⚠️ NO EDITAR CREDENCIALES AQUÍ - Se cargan desde variables de entorno o config seguro
+        // En producción, use un servidor backend para servir la configuración de forma segura
         const PRODUCTION_CONFIG = {
-            enabled: true,  // Poner false para volver a modo demo
-            url: 'https://nyrkgmuvsuxhdmfdhdrc.supabase.co',
-            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55cmtnbXV2c3V4aGRtZmRoZHJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2ODg2NTcsImV4cCI6MjEwNjI2NDY1N30.t5WDEcS93tHLp_Xj7w2vZNATkTkP-fCIfSFnujqbFiI'
+            enabled: false,  // Deshabilitado por seguridad - configurar vía servidor
+            url: '',
+            key: ''
         };
 
         // ============================================
@@ -577,6 +634,292 @@
                 hour: '2-digit', minute: '2-digit', second: '2-digit',
                 hour12: false
             });
+        }
+
+        // ============================================
+        // SEGURIDAD: Validación, Sanitización, Rate Limiting, Encriptación
+        // ============================================
+        const Security = {
+            // Rate limiting para llamadas a API
+            rateLimits: new Map(),
+            maxRequestsPerMinute: 30,
+            maxRequestsPerHour: 200,
+
+            checkRateLimit(key, maxRequests = 30, windowMs = 60000) {
+                const now = Date.now();
+                const windowStart = now - windowMs;
+                
+                if (!this.rateLimits.has(key)) {
+                    this.rateLimits.set(key, []);
+                }
+                
+                const requests = this.rateLimits.get(key).filter(t => t > windowStart);
+                this.rateLimits.set(key, requests);
+                
+                if (requests.length >= maxRequests) {
+                    const oldest = requests[0];
+                    const waitTime = Math.ceil((oldest + windowMs - now) / 1000);
+                    throw new Error(`Límite de tasa excedido. Intente en ${waitTime} segundos.`);
+                }
+                
+                requests.push(now);
+                return true;
+            },
+
+            // Validación de cédula paraguaya (7-8 dígitos)
+            validateCedula(cedula) {
+                if (!cedula) return { valid: false, error: 'Cédula requerida' };
+                const clean = String(cedula).replace(/\D/g, '');
+                if (clean.length < 7 || clean.length > 8) {
+                    return { valid: false, error: 'Cédula debe tener 7 u 8 dígitos' };
+                }
+                if (!/^\d+$/.test(clean)) {
+                    return { valid: false, error: 'Cédula solo puede contener números' };
+                }
+                return { valid: true, clean };
+            },
+
+            // Validación de email
+            validateEmail(email) {
+                if (!email) return { valid: false, error: 'Email requerido' };
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    return { valid: false, error: 'Formato de email inválido' };
+                }
+                if (email.length > 254) {
+                    return { valid: false, error: 'Email demasiado largo' };
+                }
+                return { valid: true, clean: email.toLowerCase().trim() };
+            },
+
+            // Validación de contraseña
+            validatePassword(password) {
+                if (!password) return { valid: false, error: 'Contraseña requerida' };
+                if (password.length < 8) {
+                    return { valid: false, error: 'Contraseña debe tener al menos 8 caracteres' };
+                }
+                if (password.length > 128) {
+                    return { valid: false, error: 'Contraseña demasiado larga' };
+                }
+                // Verificar complejidad
+                const hasUpper = /[A-Z]/.test(password);
+                const hasLower = /[a-z]/.test(password);
+                const hasNumber = /\d/.test(password);
+                const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+                const strength = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+                if (strength < 3) {
+                    return { valid: false, error: 'Contraseña debe tener mayúsculas, minúsculas, números y símbolos' };
+                }
+                return { valid: true };
+            },
+
+            // Validación de nombre
+            validateName(name, maxLength = 100) {
+                if (!name) return { valid: false, error: 'Nombre requerido' };
+                const clean = name.trim();
+                if (clean.length < 2) {
+                    return { valid: false, error: 'Nombre debe tener al menos 2 caracteres' };
+                }
+                if (clean.length > maxLength) {
+                    return { valid: false, error: `Nombre no puede exceder ${maxLength} caracteres` };
+                }
+                // Solo letras, espacios, guiones, acentos y puntos
+                if (!/^[\p{L}\s\-\.']+$/u.test(clean)) {
+                    return { valid: false, error: 'Nombre contiene caracteres inválidos' };
+                }
+                return { valid: true, clean };
+            },
+
+            // Validación de texto genérico (referente, zona, etc.)
+            validateText(text, maxLength = 100, required = false) {
+                if (!text || !text.trim()) {
+                    return { valid: !required, clean: '', error: required ? 'Campo requerido' : null };
+                }
+                const clean = text.trim();
+                if (clean.length > maxLength) {
+                    return { valid: false, error: `Texto no puede exceder ${maxLength} caracteres` };
+                }
+                // Permitir alfanumérico, espacios, puntuación básica
+                if (!/^[\p{L}\p{N}\s\-\.\,\;\:\_\(\)\[\]\/]+$/u.test(clean)) {
+                    return { valid: false, error: 'Texto contiene caracteres inválidos' };
+                }
+                return { valid: true, clean };
+            },
+
+            // Sanitización para prevenir XSS (ya tenemos escapeHtml pero añadimos más)
+            sanitizeForHtml(text) {
+                if (!text) return '';
+                return escapeHtml(String(text).trim());
+            },
+
+            sanitizeForAttribute(text) {
+                if (!text) return '';
+                return String(text).trim()
+                    .replace(/"/g, '"')
+                    .replace(/'/g, ''')
+                    .replace(/</g, '<')
+                    .replace(/>/g, '>');
+            },
+
+            // Validación de números (orden, mesa)
+            validateNumber(value, min = 1, max = 9999, required = false) {
+                if (value === null || value === undefined || value === '') {
+                    return { valid: !required, clean: null, error: required ? 'Valor requerido' : null };
+                }
+                const num = parseInt(value, 10);
+                if (isNaN(num)) {
+                    return { valid: false, error: 'Debe ser un número válido' };
+                }
+                if (num < min || num > max) {
+                    return { valid: false, error: `Valor debe estar entre ${min} y ${max}` };
+                }
+                return { valid: true, clean: num };
+            },
+
+            // Encriptación simple para localStorage (AES-GCM via Web Crypto API)
+            async deriveKey(password, salt) {
+                const encoder = new TextEncoder();
+                const keyMaterial = await window.crypto.subtle.importKey(
+                    'raw',
+                    encoder.encode(password),
+                    'PBKDF2',
+                    false,
+                    ['deriveKey']
+                );
+                return window.crypto.subtle.deriveKey(
+                    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                    keyMaterial,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['encrypt', 'decrypt']
+                );
+            },
+
+            async encryptData(data, password) {
+                try {
+                    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+                    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                    const key = await this.deriveKey(password, salt);
+                    const encoder = new TextEncoder();
+                    const encoded = encoder.encode(JSON.stringify(data));
+                    const encrypted = await window.crypto.subtle.encrypt(
+                        { name: 'AES-GCM', iv },
+                        key,
+                        encoded
+                    );
+                    // Combinar salt + iv + encrypted
+                    const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+                    combined.set(salt);
+                    combined.set(iv, salt.length);
+                    combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+                    return btoa(String.fromCharCode(...combined));
+                } catch (err) {
+                    console.error('Encryption failed:', err);
+                    return null;
+                }
+            },
+
+            async decryptData(encryptedB64, password) {
+                try {
+                    const combined = new Uint8Array(
+                        atob(encryptedB64).split('').map(c => c.charCodeAt(0))
+                    );
+                    const salt = combined.slice(0, 16);
+                    const iv = combined.slice(16, 28);
+                    const encrypted = combined.slice(28);
+                    const key = await this.deriveKey(password, salt);
+                    const decrypted = await window.crypto.subtle.decrypt(
+                        { name: 'AES-GCM', iv },
+                        key,
+                        encrypted
+                    );
+                    const decoder = new TextDecoder();
+                    return JSON.parse(decoder.decode(decrypted));
+                } catch (err) {
+                    console.error('Decryption failed:', err);
+                    return null;
+                }
+            },
+
+            // Generar ID seguro
+            generateSecureId() {
+                const array = new Uint8Array(16);
+                window.crypto.getRandomValues(array);
+                return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+            },
+
+            // Verificar integridad de datos críticos
+            verifyDataIntegrity(data, expectedFields) {
+                if (!data || typeof data !== 'object') return false;
+                return expectedFields.every(field => field in data);
+            }
+        };
+
+        // Clave de encriptación derivada del usuario (no almacenar en código)
+        function getEncryptionKey() {
+            // En producción, esto debería venir de un servidor seguro o ser derivado de la contraseña del usuario
+            // Para demo, usamos una clave derivada del sessionStorage (se pierde al cerrar pestaña)
+            let key = sessionStorage.getItem('encryption_key');
+            if (!key) {
+                const array = new Uint8Array(32);
+                window.crypto.getRandomValues(array);
+                key = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+                sessionStorage.setItem('encryption_key', key);
+            }
+            return key;
+        }
+
+        // Auditoría de seguridad
+        async function auditLog(action, details) {
+            const entry = {
+                id: Security.generateSecureId(),
+                action,
+                details: Security.sanitizeForHtml(JSON.stringify(details)),
+                user: currentProfile?.name || currentUser?.name || 'anonymous',
+                userId: currentProfile?.id || currentUser?.id || null,
+                sede: currentProfile?.sede_nombre || null,
+                ip: 'client-side', // En producción, obtener del backend
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Guardar en Supabase si está disponible
+            if (!demoMode && sbClient) {
+                try {
+                    await sbClient.from('audit_log').insert({
+                        accion: action,
+                        detalles: details,
+                        usuario: entry.user,
+                        usuario_id: entry.userId,
+                        sede: entry.sede,
+                        user_agent: entry.userAgent,
+                        timestamp: entry.timestamp
+                    });
+                } catch (err) {
+                    console.warn('Audit log to Supabase failed:', err);
+                }
+            }
+            
+            // También guardar en localStorage encriptado para modo demo
+            if (demoMode) {
+                try {
+                    const saved = localStorage.getItem('padron_audit_log');
+                    let logs = [];
+                    if (saved) {
+                        const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                        if (decrypted) logs = decrypted;
+                        else logs = JSON.parse(saved);
+                    }
+                    logs.unshift(entry);
+                    if (logs.length > 1000) logs.pop();
+                    const encrypted = await Security.encryptData(logs, getEncryptionKey());
+                    if (encrypted) {
+                        localStorage.setItem('padron_audit_log', encrypted);
+                    }
+                } catch (err) {
+                    console.warn('Local audit log failed:', err);
+                }
+            }
         }
 
         // ============================================
@@ -752,9 +1095,19 @@
             const password = $('#login-password').value;
             const errorEl = $('#login-error');
             
-            if (!email || !password) {
-                errorEl.textContent = 'Completa email y contraseña';
+            // Validación de email
+            const emailValidation = Security.validateEmail(email);
+            if (!emailValidation.valid) {
+                errorEl.textContent = emailValidation.error;
                 errorEl.classList.remove('hidden');
+                auditLog('LOGIN_FAILED', { reason: 'invalid_email', email: emailValidation.clean });
+                return;
+            }
+            
+            if (!password) {
+                errorEl.textContent = 'Contraseña requerida';
+                errorEl.classList.remove('hidden');
+                auditLog('LOGIN_FAILED', { reason: 'missing_password' });
                 return;
             }
             
@@ -766,16 +1119,18 @@
             `;
             
             try {
-                await signIn(email, password);
+                await signIn(emailValidation.clean, password);
                 await loadCurrentSession();
                 closeLoginModal();
                 showToast(`Bienvenido, ${currentProfile.name}`, 'success');
+                auditLog('LOGIN_SUCCESS', { email: emailValidation.clean });
                 checkLoginAndInit();
             } catch (err) {
                 errorEl.textContent = err.message.includes('Invalid login credentials') 
                     ? 'Email o contraseña incorrectos' 
                     : err.message;
                 errorEl.classList.remove('hidden');
+                auditLog('LOGIN_FAILED', { reason: 'invalid_credentials', email: emailValidation.clean });
             } finally {
                 $('#login-btn').disabled = false;
                 $('#login-btn').innerHTML = `
@@ -792,14 +1147,35 @@
             const sede_id = $('#reg-sede').value;
             const errorEl = $('#login-error');
             
-            if (!email || !password || !nombre || !sede_id) {
-                errorEl.textContent = 'Completa todos los campos';
+            // Validaciones
+            const emailValidation = Security.validateEmail(email);
+            if (!emailValidation.valid) {
+                errorEl.textContent = emailValidation.error;
                 errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'invalid_email' });
                 return;
             }
-            if (password.length < 6) {
-                errorEl.textContent = 'La contraseña debe tener al menos 6 caracteres';
+            
+            const passwordValidation = Security.validatePassword(password);
+            if (!passwordValidation.valid) {
+                errorEl.textContent = passwordValidation.error;
                 errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'weak_password' });
+                return;
+            }
+            
+            const nameValidation = Security.validateName(nombre);
+            if (!nameValidation.valid) {
+                errorEl.textContent = nameValidation.error;
+                errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'invalid_name' });
+                return;
+            }
+            
+            if (!sede_id) {
+                errorEl.textContent = 'Selecciona una sede';
+                errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'missing_sede' });
                 return;
             }
             
@@ -808,8 +1184,9 @@
             $('#register-btn').textContent = 'Creando...';
             
             try {
-                await signUp(email, password, nombre, sede_id);
+                await signUp(emailValidation.clean, password, nameValidation.clean, sede_id);
                 showToast('Usuario creado correctamente. Ahora inicia sesión.', 'success');
+                auditLog('REGISTER_SUCCESS', { email: emailValidation.clean, nombre: nameValidation.clean });
                 showLoginForm();
                 $('#reg-email').value = '';
                 $('#reg-password').value = '';
@@ -820,6 +1197,7 @@
                     ? 'Este email ya está registrado' 
                     : err.message;
                 errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'server_error', error: err.message });
             } finally {
                 $('#register-btn').disabled = false;
                 $('#register-btn').textContent = 'Crear Usuario';
@@ -827,7 +1205,9 @@
         }
 
         async function switchUser() {
+            const currentUserName = currentProfile?.name;
             await signOut();
+            auditLog('LOGOUT', { user: currentUserName });
             currentProfile = null;
             updateUserBadge();
             const app = $('#app');
@@ -884,7 +1264,7 @@
         }
 
         function renderActivity() {
-            const list = $('#activity-list');
+            const list = $('#activity-content');
             if (activityLog.length === 0) {
                 list.innerHTML = '<div class="px-4 py-8 text-center text-gray-400 text-sm">Sin actividad reciente</div>';
                 return;
@@ -893,11 +1273,11 @@
                 <div class="px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex-1 min-w-0">
-                            <p class="font-medium text-gray-900 truncate">${entry.nombre}</p>
-                            <p class="text-xs text-gray-500">${entry.cedula}</p>
+                            <p class="font-medium text-gray-900 truncate">${escapeHtml(entry.nombre)}</p>
+                            <p class="text-xs text-gray-500 font-mono">${escapeHtml(entry.cedula)}</p>
                         </div>
                         <div class="flex items-center gap-2 text-right">
-                            <span class="px-2 py-0.5 text-xs font-medium rounded-full ${entry.action === 'REGISTRO' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">
+                            <span class="status-badge ${entry.action === 'REGISTRO' ? 'status-registered' : 'status-pending'}">
                                 ${entry.action === 'REGISTRO' ? 'Registrado' : 'Consulta'}
                             </span>
                             ${entry.user ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">${escapeHtml(entry.user)}</span>` : ''}
@@ -960,13 +1340,30 @@ function updateStats() {
         // ============================================
         // MODO DEMO (LOCAL)
         // ============================================
-        function loadDemoData() {
+        async function loadDemoData() {
             const saved = localStorage.getItem(DEMO_KEY);
             if (saved) {
                 try {
-                    const arr = JSON.parse(saved);
-                    demoData = new Map(arr.map(v => [v.cedula, v]));
-                } catch {}
+                    // Intentar descifrar primero (nuevo formato)
+                    const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                    if (decrypted && Array.isArray(decrypted)) {
+                        demoData = new Map(decrypted.map(v => [v.cedula, v]));
+                    } else {
+                        // Formato antiguo sin encriptar - migrar
+                        const arr = JSON.parse(saved);
+                        demoData = new Map(arr.map(v => [v.cedula, v]));
+                        await saveDemoData(); // Guardar encriptado
+                    }
+                } catch {
+                    // Si falla, intentar formato antiguo
+                    try {
+                        const arr = JSON.parse(saved);
+                        demoData = new Map(arr.map(v => [v.cedula, v]));
+                        await saveDemoData();
+                    } catch {
+                        demoData = new Map();
+                    }
+                }
             }
             // Si no hay datos, cargar datos de prueba
             if (demoData.size === 0) {
@@ -981,25 +1378,42 @@ function updateStats() {
                     { cedula: '33334444', nombre: 'Sofía Vargas Castro', orden: 8, mesa: 104, referente: 'Carlos R.', zona_votacion: 'Escuela Técnica', ya_registrado: false, fecha_registro: null, registrado_por: null },
                 ];
                 sample.forEach(v => demoData.set(v.cedula, v));
-                saveDemoData();
+                await saveDemoData();
             }
             updateStats();
             updateConnectionStatus(false);
             showToast('Modo Demo activado - Datos de prueba cargados', 'info');
         }
 
-        function saveDemoData() {
+        async function saveDemoData() {
             const arr = Array.from(demoData.values());
-            localStorage.setItem(DEMO_KEY, JSON.stringify(arr));
+            const encrypted = await Security.encryptData(arr, getEncryptionKey());
+            if (encrypted) {
+                localStorage.setItem(DEMO_KEY, encrypted);
+            } else {
+                // Fallback sin encriptar si falla
+                localStorage.setItem(DEMO_KEY, JSON.stringify(arr));
+            }
         }
 
-        function loadActivityLog() {
+        async function loadActivityLog() {
             const saved = localStorage.getItem(ACTIVITY_LOG_KEY);
             if (saved) {
                 try {
-                    activityLog = JSON.parse(saved);
+                    const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                    if (decrypted && Array.isArray(decrypted)) {
+                        activityLog = decrypted;
+                    } else {
+                        activityLog = JSON.parse(saved);
+                        await saveActivityLog(); // Migrar a encriptado
+                    }
                 } catch {
-                    activityLog = [];
+                    try {
+                        activityLog = JSON.parse(saved);
+                        await saveActivityLog();
+                    } catch {
+                        activityLog = [];
+                    }
                 }
             }
         }
@@ -1030,10 +1444,15 @@ function updateStats() {
             }
         }
 
-        function saveActivityLog() {
+        async function saveActivityLog() {
             // Keep only last 500 entries in localStorage
             const toSave = activityLog.slice(0, 500);
-            localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(toSave));
+            const encrypted = await Security.encryptData(toSave, getEncryptionKey());
+            if (encrypted) {
+                localStorage.setItem(ACTIVITY_LOG_KEY, encrypted);
+            } else {
+                localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(toSave));
+            }
         }
 
         async function saveActivityLogToSupabase(entry) {
@@ -1080,23 +1499,12 @@ function updateStats() {
         async function checkLoginAndInit() {
             if (demoMode) {
                 // Demo mode: usar localStorage como antes
-                await loadUsers();
-                loadActivityLog();
+                await loadActivityLog();
                 renderActivity();
-                if (currentUser) {
-                    updateUserBadge();
-                    const app = $('#app');
-                    const modal = $('#login-modal');
-                    app.classList.remove('hidden');
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                    modal.style.display = 'none';
-                    app.offsetHeight;
-                    $('#cedula-input').focus();
-                } else {
-                    $('#app').classList.add('hidden');
-                    openLoginModal();
-                }
+                // En modo demo, currentUser se maneja diferente (ver login demo)
+                // Por ahora abrimos login modal
+                $('#app').classList.add('hidden');
+                openLoginModal();
                 return;
             }
             
@@ -1115,7 +1523,7 @@ function updateStats() {
                 app.offsetHeight;
                 $('#cedula-input').focus();
                 
-                // Cargar log de actividad desde Supabase
+                // Cargar log de actividad SOLO desde Supabase (evita duplicados con localStorage)
                 await loadActivityLogFromSupabase();
                 
                 // Escuchar cambios de auth
@@ -1251,8 +1659,22 @@ function updateStats() {
         // BÚSQUEDA Y RESULTADOS
         // ============================================
         async function searchCedula(cedula) {
-            const cleanCedula = cedula.trim();
-            if (!cleanCedula) return;
+            // Rate limiting por sesión
+            const sessionKey = currentProfile?.id || currentUser?.id || 'anonymous';
+            try {
+                Security.checkRateLimit(`search:${sessionKey}`, 60, 60000); // 60 por minuto
+            } catch (rateErr) {
+                showToast(rateErr.message, 'warning');
+                return;
+            }
+
+            // Validación de cédula
+            const validation = Security.validateCedula(cedula);
+            if (!validation.valid) {
+                showToast(validation.error, 'warning');
+                return;
+            }
+            const cleanCedula = validation.clean;
 
             const isLoggedIn = demoMode ? currentUser : currentProfile;
             if (!isLoggedIn) {
@@ -1289,6 +1711,9 @@ function updateStats() {
 
                 handleSearchResult(voter, cleanCedula);
                 addActivity(cleanCedula, voter?.nombre || 'Desconocido', 'CONSULTA');
+                
+                // Audit log para consultas
+                auditLog('SEARCH', { cedula: cleanCedula, found: !!voter });
             } catch (err) {
                 showToast(`Error al buscar: ${err.message}`, 'error');
                 showResultError(cleanCedula);
@@ -1347,7 +1772,7 @@ function updateStats() {
             `;
             const referenteInfo = voter.referente ? `<p class="text-xs text-gray-400 mt-2">Referente: <span class="font-medium text-gray-600">${escapeHtml(voter.referente)}</span></p>` : '';
             $('#result-card').innerHTML = `
-                <div class="bg-green-50 border-2 border-green-200 rounded-2xl p-6 md:p-8 text-center pulse-green">
+                <div class="card bg-green-50 border-2 border-green-200 p-6 md:p-8 text-center pulse-green">
                     <div class="w-20 h-20 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
                         <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                     </div>
@@ -1356,14 +1781,14 @@ function updateStats() {
                     <p class="text-gray-500 mb-3">Cédula: <span id="copy-cedula" class="font-mono font-medium text-gray-700 copyable" title="Click para copiar">${escapeHtml(voter.cedula)}</span></p>
                     ${infoBoxes}
                     ${referenteInfo}
-                    <button id="vote-btn" class="w-full md:w-64 mx-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-8 rounded-xl text-lg transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <button id="vote-btn" class="btn-primary w-full md:w-64 mx-auto text-lg mt-4">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         REGISTRAR
                     </button>
                 </div>
             `;
             $('#vote-btn').onclick = () => registerVote(voter.cedula, voter.nombre);
-$('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada');
+            $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada');
             if (voter.orden) $('#copy-orden').onclick = () => copyToClipboard(String(voter.orden), 'Orden copiado');
             if (voter.mesa) $('#copy-mesa').onclick = () => copyToClipboard(String(voter.mesa), 'Mesa copiada');
             if (voter.zona_votacion) $('#copy-zona').onclick = () => copyToClipboard(voter.zona_votacion, 'Zona copiada');
@@ -1396,13 +1821,13 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
             `;
             const referenteInfo = voter.referente ? `<p class="text-xs text-gray-400 mt-2">Referente: <span class="font-medium text-gray-600">${escapeHtml(voter.referente)}</span></p>` : '';
             $('#result-card').innerHTML = `
-                <div class="bg-red-50 border-2 border-red-200 rounded-2xl p-6 md:p-8 text-center shake">
+                <div class="card bg-red-50 border-2 border-red-200 p-6 md:p-8 text-center shake">
                     <div class="w-20 h-20 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
                         <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </div>
                     <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">¡ATENCIÓN!</p>
                     <h3 class="text-2xl md:text-3xl font-bold text-red-700 mb-2">ESTA PERSONA YA ESTÁ REGISTRADA</h3>
-                    <p class="text-gray-900 text-xl font-medium mb-4">${escapeHtml(voter.nombre)}</h3>
+                    <p class="text-gray-900 text-xl font-medium mb-4">${escapeHtml(voter.nombre)}</p>
                     <p class="text-gray-500 mb-3">Cédula: <span id="copy-cedula" class="font-mono font-medium text-gray-700 copyable" title="Click para copiar">${escapeHtml(voter.cedula)}</span></p>
                     ${infoBoxes}
                     ${referenteInfo}
@@ -1410,7 +1835,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                         <p class="text-sm text-gray-600">Fecha y hora de registro${registradoPor}:</p>
                         <p class="text-lg font-mono font-bold text-red-800 mt-1">${formatDate(voter.fecha_registro)}</p>
                     </div>
-                    <button class="mt-6 w-full md:w-64 mx-auto bg-gray-200 text-gray-500 font-semibold py-4 px-8 rounded-xl text-lg cursor-not-allowed" disabled>
+                    <button class="btn-secondary mt-6 w-full md:w-64 mx-auto text-lg cursor-not-allowed" disabled>
                         <svg class="w-6 h-6 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         YA REGISTRADO
                     </button>
@@ -1425,7 +1850,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
 
         function showResultNotFound(cedula) {
             $('#result-card').innerHTML = `
-                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 md:p-8 text-center">
+                <div class="card bg-amber-50 border-2 border-amber-200 p-6 md:p-8 text-center">
                     <div class="w-20 h-20 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
                         <svg class="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     </div>
@@ -1433,8 +1858,8 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                     <h3 class="text-2xl md:text-3xl font-bold text-amber-700 mb-2">Cédula: <span class="font-mono">${escapeHtml(cedula)}</span></h3>
                     <p class="text-gray-500 mb-4">Nombre: <span class="font-medium text-amber-700">Desconocido</span></p>
                     <p class="text-xs text-gray-400 mb-6">La cédula no existe en el padrón cargado.</p>
-                    <button id="register-unknown-btn" class="w-full md:w-64 mx-auto bg-amber-600 hover:bg-amber-700 text-white font-semibold py-4 px-8 rounded-xl text-lg transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                    <button id="register-unknown-btn" class="btn-primary w-full md:w-64 mx-auto text-lg" style="background-color: #d97706; border-color: #d97706;">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
                         REGISTRAR PERSONA DESCONOCIDA
                     </button>
                 </div>
@@ -1445,7 +1870,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
 
         function showResultError(cedula) {
             $('#result-card').innerHTML = `
-                <div class="bg-red-50 border-2 border-red-200 rounded-2xl p-6 md:p-8 text-center">
+                <div class="card bg-red-50 border-2 border-red-200 p-6 md:p-8 text-center">
                     <div class="w-20 h-20 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
                         <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     </div>
@@ -1481,18 +1906,62 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
 
         function confirmRegisterUnknown() {
             const nombre = $('#unknown-nombre').value.trim();
-            if (!nombre) {
-                showToast('Ingrese un nombre', 'warning');
+            const nameValidation = Security.validateName(nombre);
+            if (!nameValidation.valid) {
+                showToast(nameValidation.error, 'warning');
                 $('#unknown-nombre').focus();
                 return;
             }
-            const orden = parseInt($('#unknown-orden').value.trim()) || null;
-            const mesa = parseInt($('#unknown-mesa').value.trim()) || null;
-            const referente = $('#unknown-referente').value.trim() || null;
-            const zona = $('#unknown-zona').value.trim() || null;
+            
+            let orden = null, mesa = null, referente = null, zona = null;
+            
+            const ordenVal = $('#unknown-orden').value.trim();
+            if (ordenVal) {
+                const v = Security.validateNumber(ordenVal, 1, 9999);
+                if (!v.valid) {
+                    showToast(`Orden: ${v.error}`, 'warning');
+                    $('#unknown-orden').focus();
+                    return;
+                }
+                orden = v.clean;
+            }
+            
+            const mesaVal = $('#unknown-mesa').value.trim();
+            if (mesaVal) {
+                const v = Security.validateNumber(mesaVal, 1, 9999);
+                if (!v.valid) {
+                    showToast(`Mesa: ${v.error}`, 'warning');
+                    $('#unknown-mesa').focus();
+                    return;
+                }
+                mesa = v.clean;
+            }
+            
+            const referenteVal = $('#unknown-referente').value.trim();
+            if (referenteVal) {
+                const v = Security.validateText(referenteVal, 50);
+                if (!v.valid) {
+                    showToast(`Referente: ${v.error}`, 'warning');
+                    $('#unknown-referente').focus();
+                    return;
+                }
+                referente = v.clean;
+            }
+            
+            const zonaVal = $('#unknown-zona').value.trim();
+            if (zonaVal) {
+                const v = Security.validateText(zonaVal, 100);
+                if (!v.valid) {
+                    showToast(`Zona: ${v.error}`, 'warning');
+                    $('#unknown-zona').focus();
+                    return;
+                }
+                zona = v.clean;
+            }
+            
             const cedula = pendingUnknownCedula;
             closeRegisterUnknownModal();
-            registerVote(cedula, nombre, true, orden, mesa, referente, zona); // true = isUnknown
+            registerVote(cedula, nameValidation.clean, true, orden, mesa, referente, zona);
         }
 
         // ============================================
@@ -1551,13 +2020,14 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div class="flex-1 min-w-0">
                             <p class="font-medium text-gray-900 truncate">${escapeHtml(entry.nombre)}</p>
-                            <p class="text-xs text-gray-500">${escapeHtml(entry.cedula)}</p>
+                            <p class="text-xs text-gray-500 font-mono">${escapeHtml(entry.cedula)}</p>
                         </div>
                         <div class="flex items-center gap-2 text-right">
-                            <span class="px-2 py-0.5 text-xs font-medium rounded-full ${entry.action === 'REGISTRO' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">
+                            <span class="status-badge ${entry.action === 'REGISTRO' ? 'status-registered' : 'status-pending'}">
                                 ${entry.action === 'REGISTRO' ? 'Registrado' : 'Consulta'}
                             </span>
                             ${entry.user ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">${escapeHtml(entry.user)}</span>` : ''}
+                            ${entry.sede ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">${escapeHtml(entry.sede)}</span>` : ''}
                             <span class="text-xs text-gray-400 whitespace-nowrap">${formatDate(entry.timestamp).split(', ')[1]}</span>
                         </div>
                     </div>
@@ -1772,6 +2242,64 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
         // REGISTRO
         // ============================================
         async function registerVote(cedula, nombre, isUnknown = false, orden = null, mesa = null, referente = null, zona = null) {
+            // Rate limiting
+            const sessionKey = currentProfile?.id || currentUser?.id || 'anonymous';
+            try {
+                Security.checkRateLimit(`register:${sessionKey}`, 20, 60000); // 20 por minuto
+            } catch (rateErr) {
+                showToast(rateErr.message, 'warning');
+                return;
+            }
+
+            // Validaciones
+            const cedulaValidation = Security.validateCedula(cedula);
+            if (!cedulaValidation.valid) {
+                showToast(cedulaValidation.error, 'error');
+                return;
+            }
+            
+            const nameValidation = Security.validateName(nombre);
+            if (!nameValidation.valid) {
+                showToast(nameValidation.error, 'error');
+                return;
+            }
+            
+            if (orden !== null) {
+                const ordenValidation = Security.validateNumber(orden, 1, 9999);
+                if (!ordenValidation.valid) {
+                    showToast(`Orden: ${ordenValidation.error}`, 'error');
+                    return;
+                }
+                orden = ordenValidation.clean;
+            }
+            
+            if (mesa !== null) {
+                const mesaValidation = Security.validateNumber(mesa, 1, 9999);
+                if (!mesaValidation.valid) {
+                    showToast(`Mesa: ${mesaValidation.error}`, 'error');
+                    return;
+                }
+                mesa = mesaValidation.clean;
+            }
+            
+            if (referente) {
+                const refValidation = Security.validateText(referente, 50);
+                if (!refValidation.valid) {
+                    showToast(`Referente: ${refValidation.error}`, 'error');
+                    return;
+                }
+                referente = refValidation.clean;
+            }
+            
+            if (zona) {
+                const zonaValidation = Security.validateText(zona, 100);
+                if (!zonaValidation.valid) {
+                    showToast(`Zona: ${zonaValidation.error}`, 'error');
+                    return;
+                }
+                zona = zonaValidation.clean;
+            }
+
             const btn = $('#vote-btn');
             if (btn) {
                 btn.disabled = true;
@@ -1789,9 +2317,9 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                     await new Promise(r => setTimeout(r, 200));
                     
                     if (isUnknown) {
-                        demoData.set(cedula, {
-                            cedula,
-                            nombre,
+                        demoData.set(cedulaValidation.clean, {
+                            cedula: cedulaValidation.clean,
+                            nombre: nameValidation.clean,
                             orden,
                             mesa,
                             referente,
@@ -1801,16 +2329,16 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                             registrado_por: registradoPor
                         });
                     } else {
-                        const voter = demoData.get(cedula);
+                        const voter = demoData.get(cedulaValidation.clean);
                         if (voter) {
                             voter.ya_registrado = true;
                             voter.fecha_registro = now;
                             voter.registrado_por = registradoPor;
                             if (zona) voter.zona_votacion = zona;
-                            demoData.set(cedula, voter);
+                            demoData.set(cedulaValidation.clean, voter);
                         }
                     }
-                    saveDemoData();
+                    await saveDemoData();
                     updateStats();
                 } else {
                     if (!sbClient) {
@@ -1825,7 +2353,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                         return;
                     }
                     // Primero obtener el registro actual para preservar nombre, orden, mesa, referente, zona_votacion
-                    let existingNombre = nombre;
+                    let existingNombre = nameValidation.clean;
                     let existingOrden = orden;
                     let existingMesa = mesa;
                     let existingReferente = referente;
@@ -1836,7 +2364,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                             const { data: existing } = await sbClient
                                 .from('padron')
                                 .select('nombre, orden, mesa, referente, zona_votacion')
-                                .eq('cedula', cedula)
+                                .eq('cedula', cedulaValidation.clean)
                                 .single();
                             if (existing) {
                                 existingNombre = existing.nombre;
@@ -1851,7 +2379,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                     }
                     
                     const updateData = {
-                        cedula,
+                        cedula: cedulaValidation.clean,
                         nombre: existingNombre,
                         orden: existingOrden,
                         mesa: existingMesa,
@@ -1867,11 +2395,22 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                     if (error) throw error;
                 }
 
-                showToast(`Registro confirmado para ${nombre}`, 'success');
+                showToast(`Registro confirmado para ${nameValidation.clean}`, 'success');
                 playSound('success');
-                addActivity(cedula, nombre, 'REGISTRO');
+                addActivity(cedulaValidation.clean, nameValidation.clean, 'REGISTRO');
+                
+                // Audit log para registros
+                auditLog('REGISTER_VOTE', { 
+                    cedula: cedulaValidation.clean, 
+                    nombre: nameValidation.clean,
+                    isUnknown,
+                    orden,
+                    mesa,
+                    referente,
+                    zona
+                });
 
-                const voter = demoMode ? demoData.get(cedula) : null;
+                const voter = demoMode ? demoData.get(cedulaValidation.clean) : null;
                 const infoBoxes = `
                     <div class="flex gap-4 justify-center mb-4 flex-wrap">
                         ${(voter?.orden || orden) ? `
@@ -1896,13 +2435,13 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                 `;
                 const referenteInfo = (voter?.referente || referente) ? `<p class="text-xs text-gray-400 mt-2">Referente: <span class="font-medium text-gray-600">${escapeHtml(voter?.referente || referente)}</span></p>` : '';
                 $('#result-card').innerHTML = `
-                    <div class="bg-green-50 border-2 border-green-200 rounded-2xl p-6 md:p-8 text-center pulse-green">
+                    <div class="card bg-green-50 border-2 border-green-200 p-6 md:p-8 text-center pulse-green">
                         <div class="w-20 h-20 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
                             <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         </div>
                         <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">REGISTRO CONFIRMADO</p>
-                        <h3 class="text-3xl font-bold text-gray-900 mb-2">${escapeHtml(nombre)}</h3>
-                        <p class="text-gray-500 mb-3">Cédula: <span class="font-mono font-medium text-gray-700">${escapeHtml(cedula)}</span></p>
+                        <h3 class="text-3xl font-bold text-gray-900 mb-2">${escapeHtml(nameValidation.clean)}</h3>
+                        <p class="text-gray-500 mb-3">Cédula: <span class="font-mono font-medium text-gray-700">${escapeHtml(cedulaValidation.clean)}</span></p>
                         ${infoBoxes}
                         ${referenteInfo}
                         <p class="text-sm text-gray-500">Registrado por: <strong>${escapeHtml(registradoPor)}</strong></p>
@@ -1918,6 +2457,10 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
             } catch (err) {
                 showToast(`Error al registrar: ${err.message}`, 'error');
                 playSound('error');
+                auditLog('REGISTER_VOTE_FAILED', { 
+                    cedula: cedulaValidation.clean, 
+                    error: err.message 
+                });
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = `
@@ -2047,17 +2590,65 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
         }
 
         async function importExcel() {
+            // Rate limiting para importación
+            const sessionKey = currentProfile?.id || currentUser?.id || 'anonymous';
+            try {
+                Security.checkRateLimit(`import:${sessionKey}`, 5, 300000); // 5 cada 5 minutos
+            } catch (rateErr) {
+                showToast(rateErr.message, 'warning');
+                return;
+            }
+
             if (isImporting) return;
             const data = JSON.parse($('#import-btn').dataset.json || '[]');
             if (!data.length) return;
 
+            // Validar y sanitizar datos antes de importar
+            const validatedData = [];
+            for (const row of data) {
+                const cedulaValidation = Security.validateCedula(row.cedula);
+                const nameValidation = Security.validateName(row.nombre);
+                
+                if (!cedulaValidation.valid || !nameValidation.valid) {
+                    console.warn('Fila inválida omitida:', row);
+                    continue;
+                }
+                
+                let orden = null, mesa = null, referente = null, zona = null;
+                if (row.orden !== null) {
+                    const v = Security.validateNumber(row.orden, 1, 9999);
+                    if (v.valid) orden = v.clean;
+                }
+                if (row.mesa !== null) {
+                    const v = Security.validateNumber(row.mesa, 1, 9999);
+                    if (v.valid) mesa = v.clean;
+                }
+                if (row.referente) {
+                    const v = Security.validateText(row.referente, 50);
+                    if (v.valid) referente = v.clean;
+                }
+                if (row.zona_votacion) {
+                    const v = Security.validateText(row.zona_votacion, 100);
+                    if (v.valid) zona = v.clean;
+                }
+                
+                validatedData.push({
+                    cedula: cedulaValidation.clean,
+                    nombre: nameValidation.clean,
+                    orden,
+                    mesa,
+                    referente,
+                    zona_votacion: zona
+                });
+            }
+
             // Deduplicate by cédula (keep last occurrence)
             const seen = new Map();
-            data.forEach(row => seen.set(row.cedula, row));
+            validatedData.forEach(row => seen.set(row.cedula, row));
             const dedupedData = Array.from(seen.values());
             
-            if (dedupedData.length !== data.length) {
-                showToast(`Se eliminaron ${data.length - dedupedData.length} cédulas duplicadas del Excel`, 'info');
+            if (dedupedData.length !== validatedData.length) {
+                showToast(`Se eliminaron ${validatedData.length - dedupedData.length} cédulas duplicadas`, 'info');
             }
 
             isImporting = true;
@@ -2095,7 +2686,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                     });
                     await new Promise(r => setTimeout(r, 30));
                 }
-                saveDemoData();
+                await saveDemoData();
                 updateStats();
             } else {
                 if (!sbClient) {
@@ -2145,6 +2736,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                     <p class="text-sm text-green-700 mt-1">${success.toLocaleString('es-ES')} registros procesados correctamente</p>
                 `;
                 showToast(`${success} registros importados correctamente`, 'success');
+                auditLog('IMPORT_SUCCESS', { count: success });
                 updateStats();
                 setTimeout(() => {
                     closeImportModal();
@@ -2157,6 +2749,7 @@ $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada
                     <p class="text-sm text-amber-700 mt-1">Éxitos: ${success.toLocaleString('es-ES')} | Errores: ${errors.toLocaleString('es-ES')}</p>
                 `;
                 showToast(`${errors} registros fallaron`, 'warning');
+                auditLog('IMPORT_PARTIAL', { success, errors });
             }
 
             $('#import-btn').disabled = false;

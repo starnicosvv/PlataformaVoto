@@ -1,7 +1,6 @@
 # Excel temp files
 ~$*.xlsx
 ~$*.xls
-Libro2.xlsx
 
 # OS
 .DS_Store
@@ -15,10 +14,21 @@ Thumbs.db
 
 # Node
 node_modules/
-package-lock.json
-package.json
 
-# Generated
-padron_importar.xlsx
-convert_excel.js
+# Generated / Data files (not for version control)
+*.xlsx
 temp_data.json
+padron_importar.xlsx
+
+# Config files with secrets
+*.env
+*.env.local
+*.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS/Editor
+*.bak
+*.tmp

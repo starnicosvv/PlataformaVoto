@@ -1,35 +1,46 @@
-# Sistema de Control de Padrón Electoral y Registro en Tiempo Real
+# Sistema de Control de Padrón Electoral
 
-Sistema web para control de padrón electoral y registro de asistencia/votos distribuido, con sincronización en tiempo real entre múltiples operadores mediante Supabase.
+Sistema web profesional para control de padrón electoral y registro de asistencia/votos distribuido, con sincronización en tiempo real entre múltiples operadores mediante Supabase.
 
 ## Características Principales
 
 - **Búsqueda por cédula** ultra-rápida con autofoco, Enter y validación visual (PY 7-8 dígitos)
-- **Tres estados visuales**: Habilitado (verde cajas grandes Orden/Mesa), Ya Registrado (rojo), Desconocido (ámbar)
-- **Orden, Mesa, Referente**: Cajas grandes tipo tarjeta (verde/azul) + texto pequeño Referente
-- **Registro de personas no cargadas** en el padrón (modal con Nombre + Orden + Mesa + Referente + link TSJE)
-- **Multi-usuario**: Login de operadores, cada registro guarda quién lo realizó
+- **Tres estados visuales**: Habilitado (verde), Ya Registrado (rojo), Desconocido (ámbar)
+- **Orden, Mesa, Referente**: Tarjetas informativas grandes con botón de copiar al portapapeles
+- **Registro de personas no cargadas** en el padrón (modal con Nombre + Orden + Mesa + Referente + enlace TSJE)
+- **Multi-usuario**: Login seguro con Supabase Auth, cada registro guarda quién lo realizó y su sede
 - **Tiempo real**: Sincronización instantánea via Supabase Realtime entre notebooks/pestañas
-- **Importación Excel** masiva con upsert, deduplicación automática, `ignoreDuplicates: true`, barra progreso
+- **Importación Excel** masiva con upsert, deduplicación automática, barra de progreso
 - **Modo Demo offline** con datos de prueba para testear sin configurar Supabase
 - **Estadísticas en vivo**: Total, Registrados, Pendientes
-- **Log de actividad** con timestamp, operador, filtros, export CSV
-- **Ver datos importados**: Tabla buscable, filtros, export CSV con nuevos campos
-- **Config Supabase robusta**: Auto-limpia URL (`/rest/v1/`), limpia cliente anterior, botón "Limpiar" con confirmación
-- **Copiar al portapapeles**: Click en cédula/orden/mesa → toast "Copiado"
+- **Log de actividad** con timestamp, operador, sede, filtros, export CSV
+- **Ver datos importados**: Tabla buscable, filtros por estado, export CSV
+- **Configuración Supabase robusta**: Auto-limpia URL, limpia cliente anterior, botón "Limpiar" con confirmación
+- **Copiar al portapapeles**: Click en cédula/orden/mesa/zona → toast de confirmación
 - **Sonidos**: Beep éxito/error al registrar (Web Audio API)
 - **Detección offline**: Banner automático + sincronización al reconectar
-- **Backup/Restore**: Export/Import JSON completo (datos + config + usuarios + log)
+- **Backup/Restore**: Export/Import JSON completo (datos + config + log)
 - **Validación cédula PY**: Feedback visual en tiempo real (ámbar <7 dígitos, verde ≥7)
+
+## Seguridad
+
+- **Sin credenciales hardcodeadas**: Configuración vía servidor backend seguro
+- **Content Security Policy (CSP)** estricta implementada
+- **Rate limiting** en cliente (búsquedas: 60/min, registros: 20/min, importaciones: 5/5min)
+- **Validación y sanitización** de todas las entradas (XSS prevention)
+- **Encriptación AES-GCM** para datos sensibles en localStorage (clave por sesión)
+- **Auditoría completa**: LOGIN, REGISTER, VOTE, IMPORT, LOGOUT con detalles
+- **Gestión de sesión segura**: Logout con auditoría, claves en sessionStorage
+- **Headers de seguridad**: X-Content-Type-Options, X-Frame-Options, Referrer-Policy
 
 ## Stack Tecnológico
 
 | Capa | Tecnología |
 |------|------------|
 | Frontend | HTML5, Tailwind CSS (CDN), JavaScript Vanilla (ES6+) |
-| Backend/DB | Supabase (PostgreSQL + Realtime) |
+| Backend/DB | Supabase (PostgreSQL + Realtime + Auth) |
 | Importación | SheetJS (xlsx CDN) |
-| Almacenamiento local | localStorage (config, usuarios, datos demo) |
+| Almacenamiento local | localStorage encriptado (config, datos demo, logs) |
 | Despliegue | Archivo único `index.html` servido estáticamente |
 
 ## Estructura del Proyecto
@@ -37,19 +48,15 @@ Sistema web para control de padrón electoral y registro de asistencia/votos dis
 ```
 ├── index.html              # Aplicación completa (HTML + CSS + JS)
 ├── README.md               # Esta documentación
-├── convert_excel.js        # Script para convertir Excel crudo a formato padrón
-├── convert_libro1.js       # Script específico para formato Libro1.xlsx (MESA, ORDEN, CEDULA, NOMBRE, APELLIDO, REFERENTE)
-├── Libro1.xlsx             # Datos fuente (11,600 registros) - formato origen
-├── padron_importar.xlsx    # Datos convertidos listos para importar (11,600 registros: cedula, nombre, orden, mesa, referente, zona_votacion)
-├── temp_data.json          # Backup temporal de datos
-└── supabase.min.js         # Cliente Supabase local (CDN fallback)
+├── supabase.min.js         # Cliente Supabase local (CDN fallback)
+└── .gitignore              # Archivos ignorados por git
 ```
 
 ## Requisitos Previos
 
 - Navegador moderno (Chrome, Firefox, Edge, Safari)
 - Servidor HTTP local (requerido por CORS, localStorage, módulos ES)
-- Cuenta Supabase (opcional, para modo producción)
+- Cuenta Supabase (para modo producción)
 
 ## Instalación y Ejecución
 
@@ -96,10 +103,12 @@ http://localhost:8080
 1. Ir a [supabase.com](https://supabase.com) → New Project
 2. Copiar **Project URL** y **anon public key** (Settings → API)
 
-### 2. Crear tabla `padron`
+### 2. Crear tablas necesarias
+
+Ejecutar en SQL Editor de Supabase:
 
 ```sql
--- Ejecutar en SQL Editor de Supabase
+-- Tabla principal: padrón electoral
 create table padron (
   cedula text primary key,
   nombre text not null,
@@ -112,43 +121,10 @@ create table padron (
   registrado_por text
 );
 
--- Habilitar Realtime
+-- Habilitar Realtime para sincronización
 alter publication supabase_realtime add table padron;
-```
 
-### 2b. Crear tabla `users` (para compartir usuarios entre dispositivos - **DEPRECADO**, usar Auth)
-
-```sql
--- Ejecutar en SQL Editor de Supabase
-create table users (
-  id text primary key,
-  name text not null,
-  created_at timestamptz default now()
-);
-
--- Habilitar Realtime (opcional)
-alter publication supabase_realtime add table users;
-
--- Políticas RLS
-alter table users enable row level security;
-
-create policy "Todos pueden leer usuarios" on users
-  for select using (true);
-
-create policy "Todos pueden insertar usuarios" on users
-  for insert with check (true);
-```
-
-### 2c. Configurar Autenticación y Sedés (NUEVO - Recomendado)
-
-**1. Habilitar Auth en Supabase:**
-- Dashboard → Authentication → Providers → Email → **Enable Email provider**
-- Desactivar "Confirm email" para desarrollo (opcional)
-
-**2. Crear tablas de perfiles y sedés:**
-
-```sql
--- Tabla de sedés (ubicaciones)
+-- Tabla de sedes (ubicaciones)
 create table sedes (
   id uuid primary key default gen_random_uuid(),
   nombre text not null unique,
@@ -200,39 +176,58 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Tablas de auditoría
+create table activity_log (
+  id bigserial primary key,
+  cedula text not null,
+  nombre text not null,
+  accion text not null,
+  usuario text,
+  sede text,
+  timestamp timestamptz not null
+);
+
+create table audit_log (
+  id uuid primary key default gen_random_uuid(),
+  accion text not null,
+  detalles jsonb,
+  usuario text,
+  usuario_id uuid,
+  sede text,
+  user_agent text,
+  timestamp timestamptz not null
+);
+
+-- Habilitar Realtime para logs
+alter publication supabase_realtime add table activity_log;
 ```
 
-**3. Crear sedés y primer admin:**
+### 3. Crear sedes y configurar
+
 ```sql
--- Insertar sedés (ej: 3 sedés)
+-- Insertar sedes (ejemplos)
 insert into sedes (nombre) values 
   ('Sede Central'),
   ('Sede Norte'),
   ('Sede Sur');
-
--- El primer usuario que se registre vía la app será 'operador'
--- Para hacer admin, ejecutar manualmente:
--- update profiles set role = 'admin' where email = 'admin@ejemplo.com';
 ```
 
-### 3. Configurar en la app
+### 4. Configurar en la app
 
 1. Abrir la app → botón **"Config"** (engranaje)
 2. Pegar **URL** y **Anon Key**
 3. Click **"Guardar y Conectar"**
-
-### 4. Cambiar a modo Supabase
-
-- Botón **"Modo Demo"** (ámbar) → se vuelve verde **"Supabase"**
-- El sistema usa la config guardada automáticamente
+4. Registrarse como primer usuario (será 'operador')
+5. Para hacer admin: `update profiles set role = 'admin' where email = 'tu@email.com';`
 
 ## Uso del Sistema
 
 ### Primer acceso - Login de Operador
 
 1. Al abrir, aparece modal **"Iniciar Sesión"**
-2. Seleccionar usuario existente o crear nuevo (ej: "Mesa 1", "Escuela Norte")
-3. El badge superior muestra el operador activo
+2. Crear usuario con email, contraseña (≥8 chars, mayúsculas, minúsculas, números, símbolos), nombre y sede
+3. El badge superior muestra el operador activo y su sede
 
 ### Buscar y Registrar
 
@@ -241,25 +236,27 @@ insert into sedes (nombre) values
 
 **Resultado A - En padrón, no registrado (Verde)**
 - Nombre grande en verde
-- **Cajas grandes**: ORDEN (verde) / MESA (azul) — click para copiar
+- **Tarjetas**: ORDEN (verde) / MESA (azul) / ZONA (púrpura) — click para copiar
 - **Referente** texto pequeño abajo
 - Botón **"REGISTRAR"** → confirma, sonido éxito, toast, limpia campo
 
 **Resultado B - Ya registrado (Rojo)**
 - Alerta: "¡ATENCIÓN! ESTA PERSONA YA ESTÁ REGISTRADA"
-- Cajas grandes Orden/Mesa + Referente
+- Tarjetas Orden/Mesa/Zona + Referente
 - Muestra fecha/hora exacta y **quién la registró**
 - Botón deshabilitado
 
 **Resultado C - No está en padrón (Ámbar)**
 - "NO ENCONTRADA EN PADRÓN" + "Nombre: Desconocido"
-- Botón **"REGISTRAR PERSONA DESCONOCIDA"** → modal para ingresar Nombre + Orden + Mesa + Referente + link a padron.tsje.gov.py
+- Botón **"REGISTRAR PERSONA DESCONOCIDA"** → modal para ingresar Nombre + Orden + Mesa + Referente + Zona + enlace a padron.tsje.gov.py
 - Al confirmar: crea registro + marca como registrado + sonido éxito
 
 ### Copiar datos al portapapeles
+
 - Click en **Cédula** → "Cédula copiada"
-- Click en **Orden** (caja verde) → "Orden copiado"
-- Click en **Mesa** (caja azul) → "Mesa copiado"
+- Click en **Orden** (tarjeta verde) → "Orden copiado"
+- Click en **Mesa** (tarjeta azul) → "Mesa copiada"
+- Click en **Zona** (tarjeta púrpura) → "Zona copiada"
 
 ### Cargar Padrón (Excel)
 
@@ -267,37 +264,26 @@ insert into sedes (nombre) values
 2. Columnas: `cedula`, `nombre` (requeridas) + `orden`, `mesa`, `referente`, `zona_votacion` (opcionales)
 3. **Duplicados**: se eliminan automáticamente (keep last)
 4. Vista previa de primeras 5 filas con ejemplo de formato
-5. **"Importar Padrón"** → lotes de 500, barra progreso, `ignoreDuplicates: true`
+5. **"Importar Padrón"** → lotes de 500, barra progreso
 6. **Upsert**: actualiza nombres si cédula existe, **no toca** `ya_registrado` ni `fecha_registro`
 
-### Preparar Excel desde formato crudo (Scripts incluidos)
+### Formato Excel esperado
 
-El proyecto incluye scripts para convertir Excel con columnas sucias al formato estándar:
-
-| Archivo origen | Script | Formato origen | Formato destino |
-|---|---|---|---|
-| `Reporte_Referentes_Merged-10.xlsx` | `convert_excel.js` | `Referente, Teléfono, Zona, Nombre, Cédula, Tel, Orden, Mesa, Estado, Colegio` | `cedula, nombre, orden, mesa, referente, zona_votacion` |
-| `Libro1.xlsx` | `convert_libro1.js` | `MESA, ORDEN, CEDULA, NOMBRE, APELLIDO, REFERENTE` | `cedula, nombre, orden, mesa, referente, zona_votacion` |
-
-**Uso:**
-```bash
-# Para Reporte_Referentes_Merged-10.xlsx
-node convert_excel.js
-
-# Para Libro1.xlsx
-node convert_libro1.js
+```csv
+cedula, nombre, orden, mesa, referente, zona_votacion
+1234567, Juan Pérez, 1, 101, Carlos R., Escuela N° 123
+8765432, María López, 2, 101, Ana M., Colegio Nacional
 ```
 
-Ambos generan `padron_importar.xlsx` listo para usar en "Cargar Padrón" (últimos 11,600 registros procesados).
-
 ### Backup / Restore (Menú ▼)
-- **Exportar Backup (JSON)**: Descarga todo (padrón + usuarios + log + config)
+
+- **Exportar Backup (JSON)**: Descarga todo (padrón + log + config)
 - **Importar Backup (JSON)**: Restaura estado completo + recarga app
 
 ### Estadísticas y Actividad
 
 - **Tarjetas superiores**: Total en padrón / Ya Registrados / Pendientes (actualizan en tiempo real)
-- **Panel lateral**: Log de consultas y registros con operador y hora
+- **Panel lateral**: Log de consultas y registros con operador, sede y hora
 
 ### Multi-operador (Simultáneo)
 
@@ -309,83 +295,9 @@ Ambos generan `padron_importar.xlsx` listo para usar en "Cargar Padrón" (últim
 
 - Activo por defecto sin configurar Supabase
 - 8 registros de prueba (2 ya registrados)
-- Datos persisten en `localStorage` (`padron_demo_data`)
+- Datos persisten en `localStorage` encriptado (`padron_demo_data`)
 - Funcionalidad completa: búsqueda, registro, importación, stats
 - Botón **"Modo Demo"** ↔ **"Supabase"** para alternar
-
-## Estructura de Datos
-
-### Tabla `padron` (Supabase / localStorage)
-
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `cedula` | TEXT PK | Número de documento único |
-| `nombre` | TEXT | Nombre completo |
-| `orden` | INTEGER | N° de orden en mesa (opcional) |
-| `mesa` | INTEGER | N° de mesa receptora (opcional) |
-| `referente` | TEXT | Nombre del referente (opcional) |
-| `zona_votacion` | TEXT | Escuela/colegio de votación (opcional) |
-| `ya_registrado` | BOOLEAN | Default: false |
-| `fecha_registro` | TIMESTAMPTZ | Nullable, ISO 8601 |
-| `registrado_por` | TEXT | Nombre del operador |
-
-### localStorage Keys
-
-| Key | Contenido |
-|-----|-----------|
-| `padron_supabase_config` | `{url, key}` Supabase |
-| `padron_demo_data` | Array de objetos padrón (demo) |
-| `padron_users` | Array de usuarios `{id, name, created_at}` |
-| `padron_current_user` | `{id, name}` sesión activa |
-
-## Flujo de Datos (Arquitectura)
-
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Navegador  │────▶│  Supabase    │◀───│  Navegador  │
-│  (Operador) │     │  PostgreSQL  │    │  (Operador) │
-└─────────────┘     │  + Realtime  │    └─────────────┘
-       ▲            └──────┬───────┘           ▲
-       │                   │                   │
-       │   WebSocket       │   WebSocket       │
-       │   (Realtime)      │   (Realtime)      │
-       └───────────────────┴───────────────────┘
-              Sincronización instantánea
-```
-
-## API Supabase Utilizada
-
-```javascript
-// Cliente
-const sbClient = supabase.createClient(url, key, {
-  realtime: { params: { eventsPerSecond: 10 } }
-});
-
-// Consulta única
-const { data, error } = await sbClient
-  .from('padron')
-  .select('*')
-  .eq('cedula', cedula)
-  .single();
-
-// Upsert masivo (importación)
-await sbClient.from('padron').upsert(registros, {
-  onConflict: 'cedula',
-  ignoreDuplicates: false
-});
-
-// Update registro
-await sbClient.from('padron').update({
-  ya_registrado: true,
-  fecha_registro: now,
-  registrado_por: usuario
-}).eq('cedula', cedula);
-
-// Suscripción Realtime
-sbClient.channel('padron-changes')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'padron' }, handleChange)
-  .subscribe();
-```
 
 ## Deploy a Producción (Vercel / Netlify / Cloudflare Pages)
 
@@ -416,40 +328,6 @@ sbClient.channel('padron-changes')
 | Error conexión Supabase | Credenciales inválidas | Verificar URL y Anon Key en Config |
 | Realtime no funciona | Tabla no en publication | `alter publication supabase_realtime add table padron;` |
 | Import falla | Columnas incorrectas | Excel debe tener headers `cedula` y `nombre` |
-
-## Seguridad
-
-- **Anon Key** pública: Solo permisos `select`, `insert`, `update` en `padron` (configurar RLS en Supabase)
-- **RLS Recomendado**:
-  ```sql
-  alter table padron enable row level security;
-  
-  create policy "Operadores pueden leer" on padron
-    for select using (true);
-    
-  create policy "Operadores pueden insertar/actualizar" on padron
-    for insert/update with check (true);
-  ```
-- Sin datos sensibles en frontend
-- Validación de entrada en cliente y servidor
-
-## Personalización
-
-### Cambiar colores/theme
-Editar clases Tailwind en `index.html`:
-- Primario: `green-600` → `blue-600`, `purple-600`, etc.
-- Estados: `green-50`/`red-50`/`amber-50` para tarjetas
-
-### Agregar campos al padrón
-1. Alterar tabla Supabase
-2. Actualizar `demoData` estructura (línea ~277)
-3. Modificar `importExcel()` upsert (línea ~1127)
-4. Ajustar `showResultCanRegister()` / `showResultRegistered()`
-
-### Tamaño de lote importación
-```javascript
-const batchSize = 500; // línea ~1087
-```
 
 ## Licencia
 
