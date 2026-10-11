@@ -2960,7 +2960,7 @@ function updateStats() {
                 showToast('Configuración borrada. Vuelva a ingresar credenciales.', 'info');
             };
             $('#save-config').onclick = handleSaveConfig;
-            $('#supabase-url, #supabase-key').onkeydown = (e) => {
+            $('#supabase-url').onkeydown = $('#supabase-key').onkeydown = (e) => {
                 if (e.key === 'Enter') handleSaveConfig();
             };
 
@@ -3059,13 +3059,13 @@ function updateStats() {
 
             // Login modal (Auth)
             $('#login-btn').onclick = handleLogin;
-            $('#login-email, #login-password').onkeydown = (e) => {
+            $('#login-email').onkeydown = $('#login-password').onkeydown = (e) => {
                 if (e.key === 'Enter') handleLogin();
             };
             $('#show-register-btn').onclick = showRegisterForm;
             $('#show-login-btn').onclick = showLoginForm;
             $('#register-btn').onclick = handleRegister;
-            $('#reg-email, #reg-password, #reg-name, #reg-sede').onkeydown = (e) => {
+            $('#reg-email').onkeydown = $('#reg-password').onkeydown = $('#reg-name').onkeydown = $('#reg-sede').onkeydown = (e) => {
                 if (e.key === 'Enter') handleRegister();
             };
             $('#switch-user').onclick = switchUser;
