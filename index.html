@@ -763,7 +763,7 @@
                     return { valid: false, error: `Nombre no puede exceder ${maxLength} caracteres` };
                 }
                 // Solo letras, espacios, guiones, acentos y puntos
-                if (!/^[\p{L}\s\-\.']+$/u.test(clean)) {
+                if (!/^[\p{L}\s.\-']+$/u.test(clean)) {
                     return { valid: false, error: 'Nombre contiene caracteres inválidos' };
                 }
                 return { valid: true, clean };
@@ -779,7 +779,7 @@
                     return { valid: false, error: `Texto no puede exceder ${maxLength} caracteres` };
                 }
                 // Permitir alfanumérico, espacios, puntuación básica
-                if (!/^[\p{L}\p{N}\s\-\.\,\;\:\_\(\)\[\]\/]+$/u.test(clean)) {
+                if (!/^[\p{L}\p{N}\s\-\.,;:\(\)\[\]/]+$/u.test(clean)) {
                     return { valid: false, error: 'Texto contiene caracteres inválidos' };
                 }
                 return { valid: true, clean };
