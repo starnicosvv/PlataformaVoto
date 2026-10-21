@@ -61,6 +61,14 @@ Resultados (todos OK, sin excepciones ni errores de consola salvo warning del CD
 - switchUser demo limpia sesión; alta de usuario demo; login con el nuevo usuario.
 - Persistencia tras recargar: 11 registros, auto-login, datos restaurados desde localStorage encriptado.
 
+### Fallback automático a Modo Demo (2026-10-21)
+
+- `initSupabase()` ahora devuelve `Promise<boolean>` (true si la conexión de prueba OK).
+- `loadSavedConfig()` es async y espera el resultado de la conexión.
+- Si hay config guardada pero Supabase no responde (p. ej. proyecto pausado), la app avisa "Supabase no responde. Se activa el Modo Demo." y arranca en demo. La config se conserva para reintentar (toggle Supabase o recargar).
+- `switchToSupabase()` también hace fallback a demo si falla.
+- Verificado con CDP (`cdp-fallback.js`): config apuntando a dominio inexistente → demoMode=true, login visible, 3 toasts esperados, sin excepciones.
+
 ## Pendientes / ideas (no bloqueantes)
 
 - Probar contra un Supabase real (no hay credenciales): flujo signUp con confirmación de email, RLS, Realtime.

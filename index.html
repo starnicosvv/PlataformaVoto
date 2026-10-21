@@ -1698,7 +1698,12 @@ function updateStats() {
                 try {
                     const { url, key } = JSON.parse(saved);
                     if (url && key) {
-                        initSupabase(url, key);
+                        const connected = await initSupabase(url, key);
+                        if (!connected) {
+                            showToast('No se pudo conectar a Supabase. Se mantiene el Modo Demo.', 'warning', 6000);
+                            await enableDemoMode();
+                            return;
+                        }
                         await checkLoginAndInit();
                         return;
                     }
@@ -1783,7 +1788,7 @@ function updateStats() {
         // ============================================
         function initSupabase(url, key) {
             // Si ya está conectado con las mismas credenciales, no recrear el cliente
-            if (sbClient && sbClientUrl === url && sbClientKey === key) return;
+            if (sbClient && sbClientUrl === url && sbClientKey === key) return Promise.resolve(true);
 
             // Clean up existing client and channel
             if (channel) {
@@ -1802,18 +1807,20 @@ function updateStats() {
             authListenerAttached = false;
 
             // Test connection
-            sbClient.from('padron').select('cedula', { count: 'exact', head: true, limit: 1 })
+            return sbClient.from('padron').select('cedula', { count: 'exact', head: true, limit: 1 })
                 .then(({ error }) => {
                     if (error) throw error;
                     updateConnectionStatus(true);
                     showToast('Conectado a Supabase correctamente', 'success');
                     setupRealtime();
                     updateStats();
+                    return true;
                 })
                 .catch(err => {
                     updateConnectionStatus(false);
                     showToast(`Error de conexión: ${err.message}`, 'error');
                     console.error(err);
+                    return false;
                 });
         }
 
@@ -3010,7 +3017,7 @@ function updateStats() {
         // ============================================
         // CONFIGURACIÓN
         // ============================================
-        function loadSavedConfig() {
+        async function loadSavedConfig() {
             const saved = localStorage.getItem(CONFIG_KEY);
             if (saved) {
                 try {
@@ -3022,8 +3029,7 @@ function updateStats() {
                             cleanUrl = cleanUrl.replace(/\/rest\/v1.*$/, '');
                             saveConfig(cleanUrl, key);
                         }
-                        initSupabase(cleanUrl, key);
-                        return true;
+                        return await initSupabase(cleanUrl, key);
                     }
                 } catch {}
             }
@@ -3284,15 +3290,23 @@ function updateStats() {
                 if (PRODUCTION_CONFIG.enabled && PRODUCTION_CONFIG.url && PRODUCTION_CONFIG.key) {
                     // Guardar en localStorage para persistencia
                     saveConfig(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
-                    initSupabase(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
-                    // No mostrar botón de modo demo
-                    $('#toggle-mode').style.display = 'none';
-                    await checkLoginAndInit();
-                } else if (loadSavedConfig()) {
-                    // Config guardada en localStorage
+                    const connected = await initSupabase(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
+                    if (connected) {
+                        // No mostrar botón de modo demo
+                        $('#toggle-mode').style.display = 'none';
+                        await checkLoginAndInit();
+                    } else {
+                        showToast('No se pudo conectar a Supabase. Se activa el Modo Demo.', 'warning', 6000);
+                        await enableDemoMode();
+                    }
+                } else if (await loadSavedConfig()) {
+                    // Config guardada en localStorage y conexión OK
                     await checkLoginAndInit();
                 } else {
-                    // Fallback: modo demo
+                    // Sin config o Supabase caído: fallback a modo demo
+                    if (localStorage.getItem(CONFIG_KEY)) {
+                        showToast('Supabase no responde. Se activa el Modo Demo.', 'warning', 6000);
+                    }
                     await enableDemoMode();
                 }
             } catch (err) {
