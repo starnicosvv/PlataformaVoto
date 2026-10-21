@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     <title>Sistema de Control de Padrón Electoral</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗳️</text></svg>">
@@ -176,9 +175,13 @@
             <div class="text-center mt-4">
                 <button id="show-register-btn" type="button" class="text-sm text-primary-600 hover:text-primary-800">¿Eres admin? Crear usuario</button>
             </div>
+            <div class="text-center mt-2">
+                <button id="login-config-btn" type="button" class="text-sm text-gray-500 hover:text-gray-700">Configurar conexión Supabase</button>
+            </div>
             
             <div id="login-error" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
         </div>
+    </div>
     </div>
 
     <!-- Config Modal -->
@@ -267,6 +270,7 @@
                 <button id="cancel-unknown" class="btn-secondary">Cancelar</button>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Log Activity Modal -->
@@ -576,7 +580,8 @@
             </div>
         </div>
     </div>
-
+    </div>
+ 
     <script>
         // ============================================
         // CONFIGURACIÓN DE PRODUCCIÓN (auto-conectar a Supabase)
@@ -605,6 +610,9 @@
         let demoData = new Map(); // cedula -> {cedula, nombre, orden, mesa, referente, zona_votacion, ya_registrado, fecha_registro, registrado_por}
         let users = []; // [{id, name, created_at}]
         let currentUser = null; // {id, name}
+        let authListenerAttached = false;
+        let sbClientUrl = null;
+        let sbClientKey = null;
 
         // ============================================
         // UTILIDADES
@@ -624,7 +632,7 @@
             };
             toast.classList.add(colors[type] || colors.info);
             toast.innerHTML = `
-                <span class="flex-1 truncate text-sm">${message}</span>
+                <span class="flex-1 truncate text-sm">${escapeHtml(String(message ?? ''))}</span>
                 <button class="text-white/80 hover:text-white text-lg leading-none px-2" onclick="this.parentElement.remove()">&times;</button>
             `;
             container.appendChild(toast);
@@ -668,8 +676,19 @@
         function formatDate(isoString) {
             if (!isoString) return '-';
             const date = new Date(isoString);
+            if (isNaN(date.getTime())) return '-';
             return date.toLocaleString('es-ES', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false
+            });
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleTimeString('es-ES', {
                 hour: '2-digit', minute: '2-digit', second: '2-digit',
                 hour12: false
             });
@@ -778,8 +797,8 @@
                 if (clean.length > maxLength) {
                     return { valid: false, error: `Texto no puede exceder ${maxLength} caracteres` };
                 }
-                // Permitir alfanumérico, espacios, puntuación básica
-                if (!/^[\p{L}\p{N}\s\-\.,;:\(\)\[\]/]+$/u.test(clean)) {
+                // Permitir alfanumérico, espacios, puntuación básica, # y símbolos ordinales (° º ª)
+                if (!/^[\p{L}\p{N}\s\-\.,;:\(\)\[\]/#°ºª]+$/u.test(clean)) {
                     return { valid: false, error: 'Texto contiene caracteres inválidos' };
                 }
                 return { valid: true, clean };
@@ -794,10 +813,11 @@
             sanitizeForAttribute(text) {
                 if (!text) return '';
                 return String(text).trim()
-                    .replace(/"/g, '"')
-                    .replace(/'/g, "'")
-                    .replace(/</g, '<')
-                    .replace(/>/g, '>');
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
             },
 
             // Validación de números (orden, mesa)
@@ -897,14 +917,14 @@
         // Clave de encriptación derivada del usuario (no almacenar en código)
         function getEncryptionKey() {
             // En producción, esto debería venir de un servidor seguro o ser derivado de la contraseña del usuario
-            // Para demo, usamos una clave derivada del sessionStorage (se pierde al cerrar pestaña)
-            let key = sessionStorage.getItem('encryption_key');
+            // En modo demo/local se guarda en el dispositivo para que los datos persistan entre sesiones
+            let key = localStorage.getItem('padron_encryption_key') || sessionStorage.getItem('encryption_key');
             if (!key) {
                 const array = new Uint8Array(32);
                 window.crypto.getRandomValues(array);
                 key = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-                sessionStorage.setItem('encryption_key', key);
             }
+            localStorage.setItem('padron_encryption_key', key);
             return key;
         }
 
@@ -980,7 +1000,14 @@
         let sedes = []; // [{id, nombre}]
 
         async function loadSedes() {
-            if (demoMode || !sbClient) return;
+            if (demoMode) {
+                const select = $('#reg-sede');
+                if (select) {
+                    select.innerHTML = '<option value="demo-sede">Sede Demo (local)</option>';
+                }
+                return;
+            }
+            if (!sbClient) return;
             try {
                 const { data, error } = await sbClient.from('sedes').select('*').order('nombre');
                 if (error) throw error;
@@ -1001,6 +1028,7 @@
             
             const { data: { session } } = await sbClient.auth.getSession();
             currentSession = session;
+            currentProfile = null;
             
             if (session?.user) {
                 // Cargar perfil del usuario - sin join para evitar problemas de RLS
@@ -1079,7 +1107,7 @@
                     .from('profiles')
                     .update({ sede_id })
                     .eq('id', authData.user.id);
-                if (updateError) throw updateError;
+                if (updateError) console.warn('No se pudo asignar la sede al perfil:', updateError);
             }
             
             return authData;
@@ -1136,6 +1164,12 @@
         }
 
         function showRegisterForm() {
+            if (demoMode) {
+                const select = $('#reg-sede');
+                if (select && select.options.length <= 1) {
+                    select.innerHTML = '<option value="demo-sede">Sede Demo (local)</option>';
+                }
+            }
             $('#login-form').classList.add('hidden');
             $('#register-form').classList.remove('hidden');
             $('#show-register-btn').classList.add('hidden');
@@ -1175,30 +1209,7 @@
                     await new Promise(r => setTimeout(r, 300));
                     
                     // Cargar usuarios demo
-                    let users = [];
-                    const saved = localStorage.getItem('padron_users');
-                    if (saved) {
-                        try {
-                            const decrypted = await Security.decryptData(saved, getEncryptionKey());
-                            if (decrypted && Array.isArray(decrypted)) {
-                                users = decrypted;
-                            } else {
-                                // Decryption failed - try plain JSON
-                                try {
-                                    const parsed = JSON.parse(saved);
-                                    if (Array.isArray(parsed)) {
-                                        users = parsed;
-                                    } else {
-                                        users = [];
-                                    }
-                                } catch {
-                                    users = [];
-                                }
-                            }
-                        } catch {
-                            users = [];
-                        }
-                    }
+                    await loadUsers();
                     
                     // Buscar usuario (en demo, email = nombre de usuario)
                     let user = users.find(u => u.email === emailValidation.clean || u.name === emailValidation.clean);
@@ -1212,13 +1223,11 @@
                             created_at: new Date().toISOString()
                         };
                         users.push(user);
-                        const encrypted = await Security.encryptData(users, getEncryptionKey());
-                        if (encrypted) localStorage.setItem('padron_users', encrypted);
-                        else localStorage.setItem('padron_users', JSON.stringify(users));
+                        await saveUsers();
                     }
                     
                     currentUser = { id: user.id, name: user.name };
-                    localStorage.setItem('padron_current_user', JSON.stringify(currentUser));
+                    saveCurrentUser();
                     
                     closeLoginModal();
                     showToast(`Bienvenido, ${currentUser.name} (Demo)`, 'success');
@@ -1227,6 +1236,7 @@
                 } else {
                     await signIn(emailValidation.clean, password);
                     await loadCurrentSession();
+                    if (!currentProfile) throw new Error('No se pudo cargar el perfil de usuario');
                     closeLoginModal();
                     showToast(`Bienvenido, ${currentProfile.name}`, 'success');
                     auditLog('LOGIN_SUCCESS', { email: emailValidation.clean });
@@ -1279,7 +1289,7 @@
                 return;
             }
             
-            if (!sede_id) {
+            if (!sede_id && !demoMode) {
                 errorEl.textContent = 'Selecciona una sede';
                 errorEl.classList.remove('hidden');
                 auditLog('REGISTER_FAILED', { reason: 'missing_sede' });
@@ -1289,10 +1299,48 @@
             errorEl.classList.add('hidden');
             $('#register-btn').disabled = true;
             $('#register-btn').textContent = 'Creando...';
+
+            if (demoMode) {
+                try {
+                    if (users.some(u => u.email === emailValidation.clean)) {
+                        errorEl.textContent = 'Este email ya está registrado';
+                        errorEl.classList.remove('hidden');
+                        return;
+                    }
+                    users.push({
+                        id: Security.generateSecureId(),
+                        name: nameValidation.clean,
+                        email: emailValidation.clean,
+                        sede_id: sede_id || null,
+                        created_at: new Date().toISOString()
+                    });
+                    await saveUsers();
+                    showToast('Usuario demo creado. Ahora inicia sesión.', 'success');
+                    auditLog('REGISTER_SUCCESS', { email: emailValidation.clean, nombre: nameValidation.clean, mode: 'demo' });
+                    showLoginForm();
+                    $('#login-email').value = emailValidation.clean;
+                    $('#reg-email').value = '';
+                    $('#reg-password').value = '';
+                    $('#reg-name').value = '';
+                    $('#reg-sede').value = '';
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.classList.remove('hidden');
+                    auditLog('REGISTER_FAILED', { reason: 'demo_error', error: err.message });
+                } finally {
+                    $('#register-btn').disabled = false;
+                    $('#register-btn').textContent = 'Crear Usuario';
+                }
+                return;
+            }
             
             try {
-                await signUp(emailValidation.clean, password, nameValidation.clean, sede_id);
-                showToast('Usuario creado correctamente. Ahora inicia sesión.', 'success');
+                const authData = await signUp(emailValidation.clean, password, nameValidation.clean, sede_id);
+                if (authData?.session) {
+                    showToast('Usuario creado correctamente. Ahora inicia sesión.', 'success');
+                } else {
+                    showToast('Usuario creado. Revisa tu correo para confirmar la cuenta.', 'info', 6000);
+                }
                 auditLog('REGISTER_SUCCESS', { email: emailValidation.clean, nombre: nameValidation.clean });
                 showLoginForm();
                 $('#reg-email').value = '';
@@ -1312,10 +1360,16 @@
         }
 
         async function switchUser() {
-            const currentUserName = currentProfile?.name;
-            await signOut();
-            auditLog('LOGOUT', { user: currentUserName });
-            currentProfile = null;
+            const currentUserName = currentProfile?.name || currentUser?.name;
+            if (demoMode) {
+                auditLog('LOGOUT', { user: currentUserName, mode: 'demo' });
+                currentUser = null;
+                localStorage.removeItem(CURRENT_USER_KEY);
+            } else {
+                await signOut();
+                auditLog('LOGOUT', { user: currentUserName });
+                currentProfile = null;
+            }
             updateUserBadge();
             const app = $('#app');
             app.classList.add('hidden');
@@ -1389,7 +1443,7 @@
                             </span>
                             ${entry.user ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">${escapeHtml(entry.user)}</span>` : ''}
                             ${entry.sede ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">${escapeHtml(entry.sede)}</span>` : ''}
-                            <span class="text-xs text-gray-400 whitespace-nowrap">${formatDate(entry.timestamp).split(', ')[1]}</span>
+                            <span class="text-xs text-gray-400 whitespace-nowrap">${formatTime(entry.timestamp)}</span>
                         </div>
                     </div>
                 </div>
@@ -1517,14 +1571,31 @@ function updateStats() {
         async function saveUsers() {
             const encrypted = await Security.encryptData(users, getEncryptionKey());
             if (encrypted) {
-                localStorage.setItem('padron_users', encrypted);
+                localStorage.setItem(USERS_KEY, encrypted);
             } else {
-                localStorage.setItem('padron_users', JSON.stringify(users));
+                localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            }
+        }
+
+        async function loadUsers() {
+            const saved = localStorage.getItem(USERS_KEY);
+            users = [];
+            if (!saved) return;
+            try {
+                const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                if (decrypted && Array.isArray(decrypted)) {
+                    users = decrypted;
+                } else {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) users = parsed;
+                }
+            } catch {
+                users = [];
             }
         }
 
         function saveCurrentUser() {
-            localStorage.setItem('padron_current_user', JSON.stringify(currentUser));
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
         }
 
         async function loadActivityLog() {
@@ -1611,13 +1682,16 @@ function updateStats() {
 
         async function enableDemoMode() {
             demoMode = true;
+            currentProfile = null;
             await loadDemoData();
+            await loadUsers();
             updateModeButton();
             await checkLoginAndInit();
         }
 
         async function switchToSupabase() {
             demoMode = false;
+            currentUser = null;
             updateModeButton();
             const saved = localStorage.getItem(CONFIG_KEY);
             if (saved) {
@@ -1637,10 +1711,11 @@ function updateStats() {
             if (demoMode) {
                 // Demo mode: check for saved currentUser first
                 await loadActivityLog();
+                await loadUsers();
                 renderActivity();
                 
                 // Check for saved user session
-                const savedUser = localStorage.getItem('padron_current_user');
+                const savedUser = localStorage.getItem(CURRENT_USER_KEY);
                 if (savedUser) {
                     try {
                         currentUser = JSON.parse(savedUser);
@@ -1656,7 +1731,7 @@ function updateStats() {
                         return;
                     } catch {
                         // Invalid saved user, clear and show login
-                        localStorage.removeItem('padron_current_user');
+                        localStorage.removeItem(CURRENT_USER_KEY);
                     }
                 }
                 
@@ -1684,15 +1759,19 @@ function updateStats() {
                 // Cargar log de actividad SOLO desde Supabase (evita duplicados con localStorage)
                 await loadActivityLogFromSupabase();
                 
-                // Escuchar cambios de auth
-                sbClient.auth.onAuthStateChange((event, session) => {
-                    if (event === 'SIGNED_OUT' || !session) {
-                        currentProfile = null;
-                        updateUserBadge();
-                        $('#app').classList.add('hidden');
-                        openLoginModal();
-                    }
-                });
+                // Escuchar cambios de auth (una sola vez por cliente)
+                if (!authListenerAttached) {
+                    authListenerAttached = true;
+                    sbClient.auth.onAuthStateChange((event, session) => {
+                        if (demoMode) return;
+                        if (event === 'SIGNED_OUT' || !session) {
+                            currentProfile = null;
+                            updateUserBadge();
+                            $('#app').classList.add('hidden');
+                            openLoginModal();
+                        }
+                    });
+                }
             } else {
                 $('#app').classList.add('hidden');
                 openLoginModal();
@@ -1703,6 +1782,9 @@ function updateStats() {
         // SUPABASE
         // ============================================
         function initSupabase(url, key) {
+            // Si ya está conectado con las mismas credenciales, no recrear el cliente
+            if (sbClient && sbClientUrl === url && sbClientKey === key) return;
+
             // Clean up existing client and channel
             if (channel) {
                 try { sbClient.removeChannel(channel); } catch {}
@@ -1715,6 +1797,9 @@ function updateStats() {
             sbClient = window.supabase.createClient(url, key, {
                 realtime: { params: { eventsPerSecond: 10 } }
             });
+            sbClientUrl = url;
+            sbClientKey = key;
+            authListenerAttached = false;
 
             // Test connection
             sbClient.from('padron').select('cedula', { count: 'exact', head: true, limit: 1 })
@@ -2154,7 +2239,7 @@ function updateStats() {
             const select = $('#log-filter-user');
             const usersInLog = [...new Set(activityLog.map(e => e.user).filter(Boolean))];
             select.innerHTML = '<option value="">Todos los usuarios</option>' +
-                usersInLog.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+                usersInLog.map(u => `<option value="${Security.sanitizeForAttribute(u)}">${escapeHtml(u)}</option>`).join('');
         }
 
         function renderLogModal() {
@@ -2186,7 +2271,7 @@ function updateStats() {
                             </span>
                             ${entry.user ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">${escapeHtml(entry.user)}</span>` : ''}
                             ${entry.sede ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">${escapeHtml(entry.sede)}</span>` : ''}
-                            <span class="text-xs text-gray-400 whitespace-nowrap">${formatDate(entry.timestamp).split(', ')[1]}</span>
+                            <span class="text-xs text-gray-400 whitespace-nowrap">${formatTime(entry.timestamp)}</span>
                         </div>
                     </div>
                 </div>
@@ -2254,10 +2339,15 @@ function updateStats() {
             }
 
             let filtered = data;
+            if (statusFilter === 'registered') {
+                filtered = filtered.filter(v => v.ya_registrado);
+            } else if (statusFilter === 'pending') {
+                filtered = filtered.filter(v => !v.ya_registrado);
+            }
             if (search) {
                 filtered = filtered.filter(v =>
-                    v.cedula.includes(search) ||
-                    v.nombre.toLowerCase().includes(search)
+                    String(v.cedula || '').includes(search) ||
+                    String(v.nombre || '').toLowerCase().includes(search)
                 );
             }
 
@@ -2331,7 +2421,7 @@ function updateStats() {
         }
 
         function downloadCSV(csv, filename) {
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = filename;
@@ -2381,6 +2471,7 @@ function updateStats() {
                     if (backup.activityLog) {
                         activityLog = backup.activityLog;
                         renderActivity();
+                        saveActivityLog();
                     }
                     if (backup.config) {
                         localStorage.setItem(CONFIG_KEY, backup.config);
@@ -2551,6 +2642,7 @@ function updateStats() {
                         .from('padron')
                         .upsert(updateData, { onConflict: 'cedula' });
                     if (error) throw error;
+                    updateStats();
                 }
 
                 showToast(`Registro confirmado para ${nameValidation.clean}`, 'success');
@@ -3072,6 +3164,8 @@ function updateStats() {
             $('#clear-activity').onclick = () => {
                 activityLog = [];
                 renderActivity();
+                saveActivityLog();
+                showToast('Actividad reciente limpiada', 'info');
             };
 
             // Register unknown modal
@@ -3141,6 +3235,7 @@ function updateStats() {
             };
             $('#show-register-btn').onclick = showRegisterForm;
             $('#show-login-btn').onclick = showLoginForm;
+            $('#login-config-btn').onclick = openConfigModal;
             $('#register-btn').onclick = handleRegister;
             $('#reg-email').onkeydown = $('#reg-password').onkeydown = $('#reg-name').onkeydown = $('#reg-sede').onkeydown = (e) => {
                 if (e.key === 'Enter') handleRegister();
