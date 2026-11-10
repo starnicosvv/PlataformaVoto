@@ -1,0 +1,31 @@
+{
+  "name": "sistema-padron",
+  "version": "1.0.0",
+  "description": "Sistema web para control de padrón electoral y registro de asistencia/votos distribuido, con sincronización en tiempo real entre múltiples operadores mediante Supabase.",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starnicosvv/PlataformaVoto.git"
+  },
+  "keywords": [
+    "padron-electoral",
+    "elecciones",
+    "supabase",
+    "realtime",
+    "votacion",
+    "tailwind"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/starnicosvv/PlataformaVoto/issues"
+  },
+  "homepage": "https://github.com/starnicosvv/PlataformaVoto#readme",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

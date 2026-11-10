@@ -1,0 +1,3328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <title>Sistema de Control de Padrón Electoral</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗳️</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: {
+            50: '#eff6ff',
+            100: '#dbeafe',
+            200: '#bfdbfe',
+            300: '#93c5fd',
+            400: '#60a5fa',
+            500: '#3b82f6',
+            600: '#2563eb',
+            700: '#1d4ed8',
+            800: '#1e40af',
+            900: '#1e3a8a',
+          }
+        }
+      }
+    }
+  }
+</script>
+    <script src="supabase.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .focus-ring:focus { outline: none; ring: 2px; ring-offset: 2px; }
+        .input-cedula { font-size: 1.5rem; letter-spacing: 0.1em; text-align: center; }
+        @media (min-width: 768px) { .input-cedula { font-size: 2rem; } }
+        .card-enter { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse-green { animation: pulseGreen 1.5s ease-in-out infinite; }
+        @keyframes pulseGreen { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 50% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } }
+        .shake { animation: shake 0.5s ease-in-out; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        .bg-grid { background-image: linear-gradient(to right, rgb(229 231 235 / 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgb(229 231 235 / 0.1) 1px, transparent 1px); background-size: 24px 24px; }
+        .toast-enter { animation: toastIn 0.3s ease-out; }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        .toast-exit { animation: toastOut 0.3s ease-in forwards; }
+        @keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+        .copyable:hover { background-color: rgba(59, 130, 246, 0.1); cursor: copy; }
+        .offline-banner { animation: slideDown 0.3s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: translateY(0); } }
+        .confirm-modal-overlay { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .confirm-modal { animation: zoomIn 0.2s ease-out; }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Professional Admin Dashboard Styles */
+        .sidebar { transition: transform 0.3s ease; }
+        .sidebar.collapsed { transform: translateX(-100%); }
+        .main-content { transition: margin-left 0.3s ease; }
+        .main-content.expanded { margin-left: 0; }
+        @media (min-width: 1024px) {
+            .sidebar { transform: translateX(0); }
+            .main-content { margin-left: 260px; }
+            .sidebar.collapsed { transform: translateX(-260px); }
+            .main-content.expanded { margin-left: 0; }
+        }
+        .table-row:hover { background-color: #f9fafb; }
+        
+        /* Status badges */
+        .status-badge { display: inline-flex; align-items: center; padding: 0.125rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-registered { background-color: #dcfce7; color: #166534; }
+        
+        /* Buttons */
+        .btn-primary { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border: 1px solid transparent; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; color: white; background-color: #2563eb; transition: background-color 0.15s; }
+        .btn-primary:hover { background-color: #1d4ed8; }
+        .btn-primary:focus { outline: none; box-shadow: 0 0 0 2px white, 0 0 0 4px #3b82f6; }
+        
+        .btn-secondary { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border: 1px solid #d1d5db; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; color: #374151; background-color: white; transition: background-color 0.15s; }
+        .btn-secondary:hover { background-color: #f9fafb; }
+        .btn-secondary:focus { outline: none; box-shadow: 0 0 0 2px white, 0 0 0 4px #3b82f6; }
+        
+        .btn-danger { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border: 1px solid transparent; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; color: white; background-color: #dc2626; transition: background-color 0.15s; }
+        .btn-danger:hover { background-color: #b91c1c; }
+        .btn-danger:focus { outline: none; box-shadow: 0 0 0 2px white, 0 0 0 4px #ef4444; }
+        
+        /* Form fields */
+        .input-field { display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); outline: none; }
+        .input-field::placeholder { color: #9ca3af; }
+        .input-field:focus { outline: none; box-shadow: 0 0 0 2px #3b82f6; border-color: #3b82f6; }
+        @media (min-width: 640px) { .input-field { font-size: 0.875rem; } }
+        
+        .label-field { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
+        
+        /* Cards */
+        .card { background-color: white; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+        .card-header { padding: 1.5rem; border-bottom: 1px solid #e5e7eb; }
+        .card-body { padding: 1.5rem; }
+        .stat-card { background-color: white; overflow: hidden; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+        
+        /* Modals */
+        .modal-overlay { position: fixed; inset: 0; z-index: 50; overflow-y: auto; background-color: rgb(0 0 0 / 0.5); }
+        .modal-content { background-color: white; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); max-width: 32rem; width: 100%; margin-left: 1rem; margin-right: 1rem; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80 max-w-full"></div>
+
+    <!-- Offline Banner -->
+    <div id="offline-banner" class="hidden offline-banner fixed top-0 left-0 right-0 z-50 bg-amber-600 text-white text-center py-2 px-4 text-sm font-medium">
+        <span class="flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            Sin conexión — Los cambios se sincronizarán al reconectar
+        </span>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-overlay flex items-center justify-center p-4">
+        <div class="modal-content card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Iniciar Sesión</h2>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-gray-600 mb-6">Ingresa tus credenciales para acceder al sistema</p>
+                
+                <!-- Login Form -->
+                <div id="login-form" class="space-y-4">
+                    <div>
+                        <label class="label-field" for="login-email">Email</label>
+                        <input type="email" id="login-email" class="input-field" placeholder="usuario@sede.com" autocomplete="email">
+                    </div>
+                    <div>
+                        <label class="label-field" for="login-password">Contraseña</label>
+                        <input type="password" id="login-password" class="input-field" placeholder="Contraseña" autocomplete="current-password">
+                    </div>
+                    <button id="login-btn" class="btn-primary w-full">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m4 4H7m14 0l-4 4m0 0l-4-4m4 4H3"></path></svg>
+                        Iniciar Sesión
+                    </button>
+                </div>
+                
+                <!-- Register Form (Admin only - hidden by default) -->
+                <div id="register-form" class="hidden space-y-4 mt-6 border-t border-gray-200 pt-6">
+                    <h3 class="text-lg font-semibold text-gray-900">Crear Usuario (Admin)</h3>
+                    <div>
+                        <label class="label-field" for="reg-email">Email</label>
+                        <input type="email" id="reg-email" class="input-field" placeholder="nuevo@sede.com" autocomplete="email">
+                    </div>
+                    <div>
+                        <label class="label-field" for="reg-password">Contraseña</label>
+                        <input type="password" id="reg-password" class="input-field" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8">
+                    </div>
+                    <div>
+                        <label class="label-field" for="reg-name">Nombre completo</label>
+                        <input type="text" id="reg-name" class="input-field" placeholder="Juan Pérez" maxlength="100">
+                    </div>
+                    <div>
+                        <label class="label-field" for="reg-sede">Sede</label>
+                        <select id="reg-sede" class="input-field">
+                            <option value="">Seleccionar sede</option>
+                        </select>
+                    </div>
+                <button id="register-btn" class="btn-primary w-full">Crear Usuario</button>
+                <button id="show-login-btn" type="button" class="w-full text-center text-sm text-gray-600 hover:text-gray-800">Volver a iniciar sesión</button>
+            </div>
+            
+            <div class="text-center mt-4">
+                <button id="show-register-btn" type="button" class="text-sm text-primary-600 hover:text-primary-800">¿Eres admin? Crear usuario</button>
+            </div>
+            <div class="text-center mt-2">
+                <button id="login-config-btn" type="button" class="text-sm text-gray-500 hover:text-gray-700">Configurar conexión Supabase</button>
+            </div>
+            
+            <div id="login-error" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"></div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Config Modal -->
+    <div id="config-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Configuración Supabase</h2>
+                    <button id="close-config" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-gray-600 mb-6">Ingresa tus credenciales de Supabase para conectar el sistema. Se guardarán en tu navegador.</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="label-field" for="supabase-url">URL de Supabase</label>
+                        <input type="text" id="supabase-url" class="input-field" placeholder="https://xxxx.supabase.co">
+                    </div>
+                    <div>
+                        <label class="label-field" for="supabase-key">Clave Anónima (Anon Key)</label>
+                        <input type="password" id="supabase-key" class="input-field" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button id="save-config" class="btn-primary flex-1">Guardar y Conectar</button>
+                    <button id="skip-config" class="btn-secondary">Omitir</button>
+                    <button id="clear-config" class="btn-danger" title="Borrar configuración guardada">Limpiar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Clear Config Modal -->
+    <div id="confirm-clear-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content card-enter">
+            <div class="card-header">
+                <h2 class="text-xl font-semibold text-gray-900">Confirmar limpieza</h2>
+            </div>
+            <div class="card-body">
+                <p class="text-gray-600 mb-6">¿Borrar la configuración de Supabase guardada? Se cerrará la sesión y deberás ingresar las credenciales nuevamente.</p>
+                <div class="flex gap-3 justify-end">
+                    <button id="cancel-clear-config" class="btn-secondary">Cancelar</button>
+                    <button id="confirm-clear-config" class="btn-danger">Sí, borrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Unknown Modal -->
+    <div id="register-unknown-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Registrar Persona Desconocida</h2>
+                    <button id="close-unknown" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-gray-600 mb-4">La cédula <span id="unknown-cedula" class="font-mono font-medium text-gray-900"></span> no está en el padrón.</p>
+                <p class="text-sm text-gray-500 mb-2">Ingresa los datos para registrarla:</p>
+                <p class="text-xs text-amber-600 mb-4">💡 Consultá <a href="https://padron.tsje.gov.py/" target="_blank" class="underline">padron.tsje.gov.py</a> para ver Orden y Mesa</p>
+                <div class="mb-4">
+                    <label class="label-field" for="unknown-nombre">Nombre completo</label>
+                    <input type="text" id="unknown-nombre" class="input-field" placeholder="Nombre y apellido" maxlength="100" autocomplete="off">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="label-field" for="unknown-orden">Orden (opcional)</label>
+                        <input type="number" id="unknown-orden" class="input-field" placeholder="N° orden" min="1" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="label-field" for="unknown-mesa">Mesa (opcional)</label>
+                        <input type="number" id="unknown-mesa" class="input-field" placeholder="N° mesa" min="1" autocomplete="off">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="label-field" for="unknown-referente">Referente (opcional)</label>
+                    <input type="text" id="unknown-referente" class="input-field" placeholder="Nombre del referente" maxlength="50" autocomplete="off">
+                </div>
+                <div class="mb-4">
+                    <label class="label-field" for="unknown-zona">Zona de Votación (opcional)</label>
+                    <input type="text" id="unknown-zona" class="input-field" placeholder="Ej: Escuela N° 123, Colegio Nacional, etc." maxlength="100" autocomplete="off">
+                </div>
+            <div class="flex gap-3">
+                <button id="confirm-unknown" class="btn-primary flex-1" style="background-color: #d97706; border-color: #d97706;">Registrar</button>
+                <button id="cancel-unknown" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Log Activity Modal -->
+    <div id="log-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content max-w-3xl max-h-[80vh] flex flex-col card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Log de Actividad</h2>
+                    <button id="close-log" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+            </div>
+            <div class="card-body p-4 border-b border-gray-200 flex flex-wrap gap-3 items-center">
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <span>Filtrar por usuario:</span>
+                    <select id="log-filter-user" class="input-field text-sm py-1">
+                        <option value="">Todos los usuarios</option>
+                    </select>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <span>Tipo:</span>
+                    <select id="log-filter-action" class="input-field text-sm py-1">
+                        <option value="">Todos los tipos</option>
+                        <option value="CONSULTA">Consultas</option>
+                        <option value="REGISTRO">Registros</option>
+                    </select>
+                </label>
+                <button id="log-clear-filters" class="btn-secondary text-sm">Limpiar filtros</button>
+                <button id="log-export" class="btn-primary ml-auto">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Exportar CSV
+                </button>
+            </div>
+            <div id="log-list" class="flex-1 overflow-y-auto p-4 max-h-[50vh]"></div>
+            <div class="card-header bg-gray-50 flex items-center justify-between">
+                <span id="log-count" class="text-sm text-gray-500">0 registros</span>
+                <button id="log-close-bottom" class="btn-secondary text-sm">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Imported Data Modal -->
+    <div id="view-data-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content max-w-4xl max-h-[80vh] flex flex-col card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Datos Importados (Padrón)</h2>
+                    <button id="close-view-data" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                </div>
+            </div>
+            <div class="card-body p-4 border-b border-gray-200 flex flex-wrap gap-3 items-center">
+                <div class="relative flex-1 min-w-[200px]">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" id="view-data-search" class="input-field pl-10 text-sm" placeholder="Buscar por cédula o nombre...">
+                </div>
+                <select id="view-data-filter-status" class="input-field text-sm">
+                    <option value="">Todos los estados</option>
+                    <option value="registered">Registrados</option>
+                    <option value="pending">Pendientes</option>
+                </select>
+                <button id="view-data-export" class="btn-primary ml-auto">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Exportar CSV
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto p-4">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" id="view-data-table">
+                        <thead class="sticky top-0 bg-gray-50">
+                            <tr class="text-left text-gray-500 border-b border-gray-200">
+                                <th class="pb-2 px-2 font-medium">Cédula</th>
+                                <th class="pb-2 px-2 font-medium">Nombre</th>
+                                <th class="pb-2 px-2 font-medium">Orden</th>
+                                <th class="pb-2 px-2 font-medium">Mesa</th>
+                                <th class="pb-2 px-2 font-medium">Referente</th>
+                                <th class="pb-2 px-2 font-medium">Zona Votación</th>
+                                <th class="pb-2 px-2 font-medium">Estado</th>
+                                <th class="pb-2 px-2 font-medium">Fecha Registro</th>
+                                <th class="pb-2 px-2 font-medium">Registrado Por</th>
+                            </tr>
+                        </thead>
+                        <tbody id="view-data-rows" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+                <div id="view-data-empty" class="hidden text-center py-12 text-gray-500">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <p>No hay datos para mostrar</p>
+                </div>
+            </div>
+            <div class="card-header bg-gray-50 flex items-center justify-between">
+                <span id="view-data-count" class="text-sm text-gray-500">0 registros</span>
+                <button id="view-data-close-bottom" class="btn-secondary text-sm">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+<!-- Main App -->
+    <div id="app" class="hidden">
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">Control de Padrón Electoral</h1>
+                        <p class="text-xs text-gray-500">Registro en tiempo real</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span id="connection-status" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-full bg-gray-100 text-gray-600">
+                        <span id="status-dot" class="w-2 h-2 rounded-full bg-gray-400"></span>
+                        <span id="status-text">Desconectado</span>
+                    </span>
+                    <button id="toggle-mode" class="btn-secondary text-sm" title="Cambiar entre Modo Demo y Supabase">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                        <span id="mode-text">Modo Demo</span>
+                    </button>
+                    <div id="user-badge" class="hidden items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-medium border border-green-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        <span id="current-user-name"></span>
+                        <span id="current-user-sede" class="text-xs bg-green-100 px-2 py-0.5 rounded-full"></span>
+                        <button id="switch-user" class="ml-1 text-green-600 hover:text-green-800 text-xs font-normal">cambiar</button>
+                    </div>
+                    <!-- Menu Dropdown -->
+                    <div class="relative" id="menu-dropdown">
+                        <button id="menu-btn" class="btn-secondary text-sm" title="Menú">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        </button>
+                        <div id="menu-content" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                            <button id="menu-log" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                                Ver Log de Actividad
+                            </button>
+                            <button id="menu-view-data" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                Ver Datos Importados
+                            </button>
+                            <hr class="my-1 border-gray-200">
+                            <button id="menu-export-backup" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Exportar Backup (JSON)
+                            </button>
+                            <button id="menu-import-backup" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Importar Backup (JSON)
+                            </button>
+                            <button id="menu-refresh-stats" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                Actualizar Estadísticas
+                            </button>
+                        </div>
+                    </div>
+                    <button id="open-config" class="btn-secondary text-sm">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 001.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Config
+                    </button>
+                    <button id="open-import" class="btn-primary text-sm">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Cargar Padrón
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-4xl mx-auto px-4 py-8">
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-3 gap-3 mb-8" id="stats-bar" style="display: none;">
+                <div class="stat-card p-6">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total en Padrón</p>
+                    <p id="stat-total" class="text-3xl font-bold text-gray-900 mt-1">-</p>
+                </div>
+                <div class="stat-card p-6">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Ya Registrados</p>
+                    <p id="stat-voted" class="text-3xl font-bold text-green-600 mt-1">-</p>
+                </div>
+                <div class="stat-card p-6">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Pendientes</p>
+                    <p id="stat-pending" class="text-3xl font-bold text-amber-600 mt-1">-</p>
+                </div>
+            </div>
+
+            <!-- Search Section -->
+            <section class="card mb-8 card-enter">
+                <div class="card-body">
+                    <div class="text-center mb-6">
+                        <h2 class="text-lg font-semibold text-gray-900">Buscar por Cédula</h2>
+                        <p class="text-sm text-gray-500 mt-1">Presiona ENTER para consultar</p>
+                    </div>
+                    <div class="max-w-xl mx-auto">
+                        <div class="relative">
+                            <input
+                                type="text"
+                                id="cedula-input"
+                                class="input-cedula w-full px-6 py-5 border-2 border-gray-200 rounded-xl focus-ring focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 bg-gray-50 placeholder-gray-400"
+                                placeholder="Ingrese número de cédula"
+                                autocomplete="off"
+                                spellcheck="false"
+                                inputmode="numeric"
+                            >
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                        </div>
+                        <button id="search-btn" class="btn-primary mt-4 w-full md:w-auto md:ml-4 mx-auto md:mx-0">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            Consultar
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Result Card -->
+            <section id="result-section" class="hidden">
+                <div id="result-card" class="card-enter"></div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section id="activity-section" class="hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Actividad Reciente</h3>
+                    <button id="clear-activity" class="btn-secondary text-sm">Limpiar</button>
+                </div>
+                <div id="activity-list" class="card overflow-hidden">
+                    <div id="activity-content" class="divide-y divide-gray-100 max-h-64 overflow-y-auto"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white border-t border-gray-200 py-4 px-4">
+            <div class="max-w-7xl mx-auto text-center text-sm text-gray-500">
+                <p>Sistema de Control de Padrón Electoral &copy; 2024</p>
+            </div>
+        </footer>
+    </div>
+
+<!-- Import Modal -->
+    <div id="import-modal" class="modal-overlay hidden items-center justify-center p-4">
+        <div class="modal-content max-w-2xl max-h-[80vh] overflow-y-auto card-enter">
+            <div class="card-header">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Cargar Padrón desde Excel</h2>
+                    <button id="close-import" class="text-gray-400 hover:text-gray-600 text-2xl leading-none p-2" aria-label="Cerrar">&times;</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="text-gray-600 mb-4">Selecciona un archivo <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">.xlsx</code> con las columnas <strong>cedula</strong> y <strong>nombre</strong> (opcional: <strong>orden</strong>, <strong>mesa</strong>, <strong>referente</strong>, <strong>zona_votacion</strong>). Se usará <code class="bg-gray-100 px-1.5 py-0.5 rounded text-sm">upsert</code> para evitar duplicados.</p>
+                <details class="mb-4 group">
+                    <summary class="text-sm text-primary-600 hover:text-primary-800 cursor-pointer font-medium flex items-center gap-1">
+                        <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        Ver formato de columnas esperado
+                    </summary>
+                    <div class="mt-2 p-3 bg-gray-50 rounded-lg text-xs font-mono overflow-x-auto">
+                        <pre class="text-gray-700">cedula, nombre, orden, mesa, referente, zona_votacion
+1234567, Juan Pérez, 1, 101, Carlos R., Escuela N° 123
+8765432, María López, 2, 101, Ana M., Colegio Nacional</pre>
+                    </div>
+                </details>
+                <div class="mb-4">
+                    <label class="label-field">Archivo Excel</label>
+                    <div class="relative">
+                        <input type="file" id="excel-file" accept=".xlsx,.xls" class="hidden">
+                        <button id="select-file" class="w-full border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary-500 hover:bg-primary-50 transition-colors" type="button">
+                            <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <p class="text-gray-600">Haz clic o arrastra el archivo aquí</p>
+                            <p class="text-xs text-gray-400 mt-1">Solo archivos .xlsx / .xls</p>
+                        </button>
+                    </div>
+                    <p id="file-name" class="text-sm text-gray-500 mt-2 hidden"></p>
+                </div>
+                <div id="import-preview" class="hidden mb-4">
+                    <p class="text-sm font-medium text-gray-700 mb-2">Vista previa (primeras 5 filas):</p>
+<div class="overflow-x-auto bg-gray-50 rounded-lg p-3">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-gray-500">
+                                <th class="pb-2 font-medium">Cédula</th>
+                                <th class="pb-2 font-medium">Nombre</th>
+                                <th class="pb-2 font-medium">Orden</th>
+                                <th class="pb-2 font-medium">Mesa</th>
+                                <th class="pb-2 font-medium">Referente</th>
+                                <th class="pb-2 font-medium">Zona Votación</th>
+                            </tr>
+                        </thead>
+                        <tbody id="preview-rows"></tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-gray-500 mt-2" id="preview-count"></p>
+            </div>
+            <div id="import-progress" class="hidden mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-700">Procesando...</span>
+                    <span id="progress-text" class="text-sm text-gray-500">0%</span>
+                </div>
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-green-600 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+            <div id="import-result" class="hidden mb-4 p-4 rounded-lg"></div>
+            <div class="flex gap-3 pt-4 border-t border-gray-200 mt-4">
+                <button id="import-btn" class="btn-primary flex-1" disabled>
+                    Importar Padrón
+                </button>
+                <button id="cancel-import" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    </div>
+ 
+    <script>
+        // ============================================
+        // CONFIGURACIÓN DE PRODUCCIÓN (auto-conectar a Supabase)
+        // ============================================
+        // ⚠️ NO EDITAR CREDENCIALES AQUÍ - Se cargan desde variables de entorno o config seguro
+        // En producción, use un servidor backend para servir la configuración de forma segura
+        const PRODUCTION_CONFIG = {
+            enabled: false,  // Deshabilitado por seguridad - configurar vía servidor
+            url: '',
+            key: ''
+        };
+
+        // ============================================
+        // CONFIGURACIÓN Y ESTADO GLOBAL
+        // ============================================
+        const CONFIG_KEY = 'padron_supabase_config';
+        const DEMO_KEY = 'padron_demo_data';
+        const USERS_KEY = 'padron_users';
+        const CURRENT_USER_KEY = 'padron_current_user';
+        const ACTIVITY_LOG_KEY = 'padron_activity_log';
+        let sbClient = null;
+        let channel = null;
+        let activityLog = [];
+        let isImporting = false;
+        let demoMode = false;
+        let demoData = new Map(); // cedula -> {cedula, nombre, orden, mesa, referente, zona_votacion, ya_registrado, fecha_registro, registrado_por}
+        let users = []; // [{id, name, created_at}]
+        let currentUser = null; // {id, name}
+        let authListenerAttached = false;
+        let sbClientUrl = null;
+        let sbClientKey = null;
+
+        // ============================================
+        // UTILIDADES
+        // ============================================
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        function showToast(message, type = 'info', duration = 4000) {
+            const container = $('#toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white min-w-0`;
+            const colors = {
+                success: 'bg-green-600',
+                error: 'bg-red-600',
+                warning: 'bg-amber-600',
+                info: 'bg-blue-600'
+            };
+            toast.classList.add(colors[type] || colors.info);
+            toast.innerHTML = `
+                <span class="flex-1 truncate text-sm">${escapeHtml(String(message ?? ''))}</span>
+                <button class="text-white/80 hover:text-white text-lg leading-none px-2" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.remove('toast-enter');
+                    toast.classList.add('toast-exit');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, duration);
+        }
+
+        function playSound(type = 'success') {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                if (type === 'success') {
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2); // G5
+                } else if (type === 'error') {
+                    osc.frequency.setValueAtTime(200, ctx.currentTime);
+                    osc.frequency.setValueAtTime(150, ctx.currentTime + 0.15);
+                } else {
+                    osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
+                }
+                
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.5);
+            } catch {
+                // Silently fail if audio not supported
+            }
+        }
+
+        function formatDate(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleString('es-ES', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false
+            });
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleTimeString('es-ES', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false
+            });
+        }
+
+        // ============================================
+        // SEGURIDAD: Validación, Sanitización, Rate Limiting, Encriptación
+        // ============================================
+        const Security = {
+            // Rate limiting para llamadas a API
+            rateLimits: new Map(),
+            maxRequestsPerMinute: 30,
+            maxRequestsPerHour: 200,
+
+            checkRateLimit(key, maxRequests = 30, windowMs = 60000) {
+                const now = Date.now();
+                const windowStart = now - windowMs;
+                
+                if (!this.rateLimits.has(key)) {
+                    this.rateLimits.set(key, []);
+                }
+                
+                const requests = this.rateLimits.get(key).filter(t => t > windowStart);
+                this.rateLimits.set(key, requests);
+                
+                if (requests.length >= maxRequests) {
+                    const oldest = requests[0];
+                    const waitTime = Math.ceil((oldest + windowMs - now) / 1000);
+                    throw new Error(`Límite de tasa excedido. Intente en ${waitTime} segundos.`);
+                }
+                
+                requests.push(now);
+                return true;
+            },
+
+            // Validación de cédula paraguaya (7-8 dígitos)
+            validateCedula(cedula) {
+                if (!cedula) return { valid: false, error: 'Cédula requerida' };
+                const clean = String(cedula).replace(/\D/g, '');
+                if (clean.length < 7 || clean.length > 8) {
+                    return { valid: false, error: 'Cédula debe tener 7 u 8 dígitos' };
+                }
+                if (!/^\d+$/.test(clean)) {
+                    return { valid: false, error: 'Cédula solo puede contener números' };
+                }
+                return { valid: true, clean };
+            },
+
+            // Validación de email
+            validateEmail(email) {
+                if (!email) return { valid: false, error: 'Email requerido' };
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    return { valid: false, error: 'Formato de email inválido' };
+                }
+                if (email.length > 254) {
+                    return { valid: false, error: 'Email demasiado largo' };
+                }
+                return { valid: true, clean: email.toLowerCase().trim() };
+            },
+
+            // Validación de contraseña
+            validatePassword(password) {
+                if (!password) return { valid: false, error: 'Contraseña requerida' };
+                if (password.length < 8) {
+                    return { valid: false, error: 'Contraseña debe tener al menos 8 caracteres' };
+                }
+                if (password.length > 128) {
+                    return { valid: false, error: 'Contraseña demasiado larga' };
+                }
+                // Verificar complejidad
+                const hasUpper = /[A-Z]/.test(password);
+                const hasLower = /[a-z]/.test(password);
+                const hasNumber = /\d/.test(password);
+                const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+                const strength = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+                if (strength < 3) {
+                    return { valid: false, error: 'Contraseña debe tener mayúsculas, minúsculas, números y símbolos' };
+                }
+                return { valid: true };
+            },
+
+            // Validación de nombre
+            validateName(name, maxLength = 100) {
+                if (!name) return { valid: false, error: 'Nombre requerido' };
+                const clean = name.trim();
+                if (clean.length < 2) {
+                    return { valid: false, error: 'Nombre debe tener al menos 2 caracteres' };
+                }
+                if (clean.length > maxLength) {
+                    return { valid: false, error: `Nombre no puede exceder ${maxLength} caracteres` };
+                }
+                // Solo letras, espacios, guiones, acentos y puntos
+                if (!/^[\p{L}\s.\-']+$/u.test(clean)) {
+                    return { valid: false, error: 'Nombre contiene caracteres inválidos' };
+                }
+                return { valid: true, clean };
+            },
+
+            // Validación de texto genérico (referente, zona, etc.)
+            validateText(text, maxLength = 100, required = false) {
+                if (!text || !text.trim()) {
+                    return { valid: !required, clean: '', error: required ? 'Campo requerido' : null };
+                }
+                const clean = text.trim();
+                if (clean.length > maxLength) {
+                    return { valid: false, error: `Texto no puede exceder ${maxLength} caracteres` };
+                }
+                // Permitir alfanumérico, espacios, puntuación básica, # y símbolos ordinales (° º ª)
+                if (!/^[\p{L}\p{N}\s\-\.,;:\(\)\[\]/#°ºª]+$/u.test(clean)) {
+                    return { valid: false, error: 'Texto contiene caracteres inválidos' };
+                }
+                return { valid: true, clean };
+            },
+
+            // Sanitización para prevenir XSS (ya tenemos escapeHtml pero añadimos más)
+            sanitizeForHtml(text) {
+                if (!text) return '';
+                return escapeHtml(String(text).trim());
+            },
+
+            sanitizeForAttribute(text) {
+                if (!text) return '';
+                return String(text).trim()
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            },
+
+            // Validación de números (orden, mesa)
+            validateNumber(value, min = 1, max = 9999, required = false) {
+                if (value === null || value === undefined || value === '') {
+                    return { valid: !required, clean: null, error: required ? 'Valor requerido' : null };
+                }
+                const num = parseInt(value, 10);
+                if (isNaN(num)) {
+                    return { valid: false, error: 'Debe ser un número válido' };
+                }
+                if (num < min || num > max) {
+                    return { valid: false, error: `Valor debe estar entre ${min} y ${max}` };
+                }
+                return { valid: true, clean: num };
+            },
+
+            // Encriptación simple para localStorage (AES-GCM via Web Crypto API)
+            async deriveKey(password, salt) {
+                const encoder = new TextEncoder();
+                const keyMaterial = await window.crypto.subtle.importKey(
+                    'raw',
+                    encoder.encode(password),
+                    'PBKDF2',
+                    false,
+                    ['deriveKey']
+                );
+                return window.crypto.subtle.deriveKey(
+                    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                    keyMaterial,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['encrypt', 'decrypt']
+                );
+            },
+
+            async encryptData(data, password) {
+                try {
+                    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+                    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                    const key = await this.deriveKey(password, salt);
+                    const encoder = new TextEncoder();
+                    const encoded = encoder.encode(JSON.stringify(data));
+                    const encrypted = await window.crypto.subtle.encrypt(
+                        { name: 'AES-GCM', iv },
+                        key,
+                        encoded
+                    );
+                    // Combinar salt + iv + encrypted
+                    const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+                    combined.set(salt);
+                    combined.set(iv, salt.length);
+                    combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+                    return btoa(String.fromCharCode(...combined));
+                } catch (err) {
+                    console.error('Encryption failed:', err);
+                    return null;
+                }
+            },
+
+            async decryptData(encryptedB64, password) {
+                try {
+                    const combined = new Uint8Array(
+                        atob(encryptedB64).split('').map(c => c.charCodeAt(0))
+                    );
+                    const salt = combined.slice(0, 16);
+                    const iv = combined.slice(16, 28);
+                    const encrypted = combined.slice(28);
+                    const key = await this.deriveKey(password, salt);
+                    const decrypted = await window.crypto.subtle.decrypt(
+                        { name: 'AES-GCM', iv },
+                        key,
+                        encrypted
+                    );
+                    const decoder = new TextDecoder();
+                    return JSON.parse(decoder.decode(decrypted));
+                } catch (err) {
+                    console.error('Decryption failed:', err);
+                    return null;
+                }
+            },
+
+            // Generar ID seguro
+            generateSecureId() {
+                const array = new Uint8Array(16);
+                window.crypto.getRandomValues(array);
+                return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+            },
+
+            // Verificar integridad de datos críticos
+            verifyDataIntegrity(data, expectedFields) {
+                if (!data || typeof data !== 'object') return false;
+                return expectedFields.every(field => field in data);
+            }
+        };
+
+        // Clave de encriptación derivada del usuario (no almacenar en código)
+        function getEncryptionKey() {
+            // En producción, esto debería venir de un servidor seguro o ser derivado de la contraseña del usuario
+            // En modo demo/local se guarda en el dispositivo para que los datos persistan entre sesiones
+            let key = localStorage.getItem('padron_encryption_key') || sessionStorage.getItem('encryption_key');
+            if (!key) {
+                const array = new Uint8Array(32);
+                window.crypto.getRandomValues(array);
+                key = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+            }
+            localStorage.setItem('padron_encryption_key', key);
+            return key;
+        }
+
+        // Auditoría de seguridad
+        async function auditLog(action, details) {
+            const entry = {
+                id: Security.generateSecureId(),
+                action,
+                details: Security.sanitizeForHtml(JSON.stringify(details)),
+                user: currentProfile?.name || currentUser?.name || 'anonymous',
+                userId: currentProfile?.id || currentUser?.id || null,
+                sede: currentProfile?.sede_nombre || null,
+                ip: 'client-side', // En producción, obtener del backend
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Guardar en Supabase si está disponible
+            if (!demoMode && sbClient) {
+                try {
+                    await sbClient.from('audit_log').insert({
+                        accion: action,
+                        detalles: details,
+                        usuario: entry.user,
+                        usuario_id: entry.userId,
+                        sede: entry.sede,
+                        user_agent: entry.userAgent,
+                        timestamp: entry.timestamp
+                    });
+                } catch (err) {
+                    console.warn('Audit log to Supabase failed:', err);
+                }
+            }
+            
+            // También guardar en localStorage encriptado para modo demo
+            if (demoMode) {
+                try {
+                    const saved = localStorage.getItem('padron_audit_log');
+                    let logs = [];
+                    if (saved) {
+                        const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                        if (decrypted && Array.isArray(decrypted)) {
+                            logs = decrypted;
+                        } else {
+                            // Decryption failed - try plain JSON
+                            try {
+                                const parsed = JSON.parse(saved);
+                                if (Array.isArray(parsed)) {
+                                    logs = parsed;
+                                }
+                            } catch {
+                                // ignore, use empty array
+                            }
+                        }
+                    }
+                    logs.unshift(entry);
+                    if (logs.length > 1000) logs.pop();
+                    const encrypted = await Security.encryptData(logs, getEncryptionKey());
+                    if (encrypted) {
+                        localStorage.setItem('padron_audit_log', encrypted);
+                    }
+                } catch (err) {
+                    console.warn('Local audit log failed:', err);
+                }
+            }
+        }
+
+        // ============================================
+        // GESTIÓN DE USUARIOS Y SEDES (Supabase Auth)
+        // ============================================
+        let currentSession = null;
+        let currentProfile = null; // {id, name, email, sede_id, sede_nombre, role}
+        let sedes = []; // [{id, nombre}]
+
+        async function loadSedes() {
+            if (demoMode) {
+                const select = $('#reg-sede');
+                if (select) {
+                    select.innerHTML = '<option value="demo-sede">Sede Demo (local)</option>';
+                }
+                return;
+            }
+            if (!sbClient) return;
+            try {
+                const { data, error } = await sbClient.from('sedes').select('*').order('nombre');
+                if (error) throw error;
+                sedes = data || [];
+                // Llenar select de sedes en formulario de registro
+                const select = $('#reg-sede');
+                if (select) {
+                    select.innerHTML = '<option value="">Seleccionar sede</option>' +
+                        sedes.map(s => `<option value="${s.id}">${escapeHtml(s.nombre)}</option>`).join('');
+                }
+            } catch (err) {
+                console.error('Error loading sedes:', err);
+            }
+        }
+
+        async function loadCurrentSession() {
+            if (demoMode || !sbClient) return null;
+            
+            const { data: { session } } = await sbClient.auth.getSession();
+            currentSession = session;
+            currentProfile = null;
+            
+            if (session?.user) {
+                // Cargar perfil del usuario - sin join para evitar problemas de RLS
+                const { data: profile, error } = await sbClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                
+                if (!error && profile) {
+                    // Cargar sede por separado
+                    let sede_nombre = 'Sin sede';
+                    if (profile.sede_id) {
+                        const { data: sede } = await sbClient
+                            .from('sedes')
+                            .select('nombre')
+                            .eq('id', profile.sede_id)
+                            .single();
+                        sede_nombre = sede?.nombre || 'Sin sede';
+                    }
+                    
+                    currentProfile = {
+                        id: profile.id,
+                        name: profile.nombre,
+                        email: profile.email,
+                        sede_id: profile.sede_id,
+                        sede_nombre: sede_nombre,
+                        role: profile.role || 'operador'
+                    };
+                } else if (error && error.code === 'PGRST116') {
+                    // No profile found (trigger may have failed) - create it
+                    console.log('Profile not found, creating...');
+                    const { error: insertError } = await sbClient
+                        .from('profiles')
+                        .insert({
+                            id: session.user.id,
+                            email: session.user.email,
+                            nombre: session.user.user_metadata?.nombre || session.user.email.split('@')[0],
+                            role: 'operador'
+                        });
+                    if (!insertError) {
+                        return loadCurrentSession();
+                    } else {
+                        console.error('Error creating profile:', insertError);
+                    }
+                } else if (error) {
+                    console.error('Error loading profile:', error);
+                }
+            } else {
+                currentProfile = null;
+            }
+            return currentProfile;
+        }
+
+        async function signIn(email, password) {
+            if (!sbClient) throw new Error('No hay conexión a Supabase');
+            const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            return data;
+        }
+
+        async function signUp(email, password, nombre, sede_id) {
+            if (!sbClient) throw new Error('No hay conexión a Supabase');
+            
+            // 1. Crear usuario en Auth (el trigger crea el perfil automáticamente)
+            const { data: authData, error: authError } = await sbClient.auth.signUp({
+                email,
+                password,
+                options: { data: { nombre } }
+            });
+            if (authError) throw authError;
+            
+            // 2. Actualizar perfil con sede (el trigger ya creó el perfil básico)
+            if (authData.user && sede_id) {
+                const { error: updateError } = await sbClient
+                    .from('profiles')
+                    .update({ sede_id })
+                    .eq('id', authData.user.id);
+                if (updateError) console.warn('No se pudo asignar la sede al perfil:', updateError);
+            }
+            
+            return authData;
+        }
+
+        async function signOut() {
+            if (sbClient) {
+                await sbClient.auth.signOut();
+            }
+            currentSession = null;
+            currentProfile = null;
+        }
+
+        function updateUserBadge() {
+            const badge = $('#user-badge');
+            const nameEl = $('#current-user-name');
+            const sedeEl = $('#current-user-sede');
+            const user = currentProfile || currentUser;
+            if (user) {
+                nameEl.textContent = user.name;
+                if (sedeEl) sedeEl.textContent = currentProfile?.sede_nombre || '';
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            } else {
+                badge.classList.add('hidden');
+                badge.classList.remove('flex');
+            }
+        }
+
+        function openLoginModal() {
+            const modal = $('#login-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.display = 'flex';
+            modal.offsetHeight;
+            showLoginForm();
+            $('#login-email').focus();
+        }
+
+        function closeLoginModal() {
+            const modal = $('#login-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+            modal.offsetHeight;
+            $('#login-error').classList.add('hidden');
+            $('#login-error').textContent = '';
+        }
+
+        function showLoginForm() {
+            $('#login-form').classList.remove('hidden');
+            $('#register-form').classList.add('hidden');
+            $('#show-register-btn').classList.remove('hidden');
+        }
+
+        function showRegisterForm() {
+            if (demoMode) {
+                const select = $('#reg-sede');
+                if (select && select.options.length <= 1) {
+                    select.innerHTML = '<option value="demo-sede">Sede Demo (local)</option>';
+                }
+            }
+            $('#login-form').classList.add('hidden');
+            $('#register-form').classList.remove('hidden');
+            $('#show-register-btn').classList.add('hidden');
+        }
+
+        async function handleLogin() {
+            const email = $('#login-email').value.trim();
+            const password = $('#login-password').value;
+            const errorEl = $('#login-error');
+            
+            // Validación de email
+            const emailValidation = Security.validateEmail(email);
+            if (!emailValidation.valid) {
+                errorEl.textContent = emailValidation.error;
+                errorEl.classList.remove('hidden');
+                auditLog('LOGIN_FAILED', { reason: 'invalid_email', email: emailValidation.clean });
+                return;
+            }
+            
+            if (!password) {
+                errorEl.textContent = 'Contraseña requerida';
+                errorEl.classList.remove('hidden');
+                auditLog('LOGIN_FAILED', { reason: 'missing_password' });
+                return;
+            }
+            
+            errorEl.classList.add('hidden');
+            $('#login-btn').disabled = true;
+            $('#login-btn').innerHTML = `
+                <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                Entrando...
+            `;
+            
+            try {
+                if (demoMode) {
+                    // Demo mode: login simple con localStorage
+                    await new Promise(r => setTimeout(r, 300));
+                    
+                    // Cargar usuarios demo
+                    await loadUsers();
+                    
+                    // Buscar usuario (en demo, email = nombre de usuario)
+                    let user = users.find(u => u.email === emailValidation.clean || u.name === emailValidation.clean);
+                    
+                    if (!user) {
+                        // Crear usuario demo nuevo
+                        user = {
+                            id: Security.generateSecureId(),
+                            name: emailValidation.clean.split('@')[0],
+                            email: emailValidation.clean,
+                            created_at: new Date().toISOString()
+                        };
+                        users.push(user);
+                        await saveUsers();
+                    }
+                    
+                    currentUser = { id: user.id, name: user.name };
+                    saveCurrentUser();
+                    
+                    closeLoginModal();
+                    showToast(`Bienvenido, ${currentUser.name} (Demo)`, 'success');
+                    auditLog('LOGIN_SUCCESS', { email: emailValidation.clean, mode: 'demo' });
+                    checkLoginAndInit();
+                } else {
+                    await signIn(emailValidation.clean, password);
+                    await loadCurrentSession();
+                    if (!currentProfile) throw new Error('No se pudo cargar el perfil de usuario');
+                    closeLoginModal();
+                    showToast(`Bienvenido, ${currentProfile.name}`, 'success');
+                    auditLog('LOGIN_SUCCESS', { email: emailValidation.clean });
+                    checkLoginAndInit();
+                }
+            } catch (err) {
+                errorEl.textContent = err.message.includes('Invalid login credentials') 
+                    ? 'Email o contraseña incorrectos' 
+                    : err.message;
+                errorEl.classList.remove('hidden');
+                auditLog('LOGIN_FAILED', { reason: 'invalid_credentials', email: emailValidation.clean });
+            } finally {
+                $('#login-btn').disabled = false;
+                $('#login-btn').innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m4 4H7m14 0l-4 4m0 0l-4-4m4 4H3"></path></svg>
+                    Iniciar Sesión
+                `;
+            }
+        }
+
+        async function handleRegister() {
+            const email = $('#reg-email').value.trim();
+            const password = $('#reg-password').value;
+            const nombre = $('#reg-name').value.trim();
+            const sede_id = $('#reg-sede').value;
+            const errorEl = $('#login-error');
+            
+            // Validaciones
+            const emailValidation = Security.validateEmail(email);
+            if (!emailValidation.valid) {
+                errorEl.textContent = emailValidation.error;
+                errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'invalid_email' });
+                return;
+            }
+            
+            const passwordValidation = Security.validatePassword(password);
+            if (!passwordValidation.valid) {
+                errorEl.textContent = passwordValidation.error;
+                errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'weak_password' });
+                return;
+            }
+            
+            const nameValidation = Security.validateName(nombre);
+            if (!nameValidation.valid) {
+                errorEl.textContent = nameValidation.error;
+                errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'invalid_name' });
+                return;
+            }
+            
+            if (!sede_id && !demoMode) {
+                errorEl.textContent = 'Selecciona una sede';
+                errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'missing_sede' });
+                return;
+            }
+            
+            errorEl.classList.add('hidden');
+            $('#register-btn').disabled = true;
+            $('#register-btn').textContent = 'Creando...';
+
+            if (demoMode) {
+                try {
+                    if (users.some(u => u.email === emailValidation.clean)) {
+                        errorEl.textContent = 'Este email ya está registrado';
+                        errorEl.classList.remove('hidden');
+                        return;
+                    }
+                    users.push({
+                        id: Security.generateSecureId(),
+                        name: nameValidation.clean,
+                        email: emailValidation.clean,
+                        sede_id: sede_id || null,
+                        created_at: new Date().toISOString()
+                    });
+                    await saveUsers();
+                    showToast('Usuario demo creado. Ahora inicia sesión.', 'success');
+                    auditLog('REGISTER_SUCCESS', { email: emailValidation.clean, nombre: nameValidation.clean, mode: 'demo' });
+                    showLoginForm();
+                    $('#login-email').value = emailValidation.clean;
+                    $('#reg-email').value = '';
+                    $('#reg-password').value = '';
+                    $('#reg-name').value = '';
+                    $('#reg-sede').value = '';
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.classList.remove('hidden');
+                    auditLog('REGISTER_FAILED', { reason: 'demo_error', error: err.message });
+                } finally {
+                    $('#register-btn').disabled = false;
+                    $('#register-btn').textContent = 'Crear Usuario';
+                }
+                return;
+            }
+            
+            try {
+                const authData = await signUp(emailValidation.clean, password, nameValidation.clean, sede_id);
+                if (authData?.session) {
+                    showToast('Usuario creado correctamente. Ahora inicia sesión.', 'success');
+                } else {
+                    showToast('Usuario creado. Revisa tu correo para confirmar la cuenta.', 'info', 6000);
+                }
+                auditLog('REGISTER_SUCCESS', { email: emailValidation.clean, nombre: nameValidation.clean });
+                showLoginForm();
+                $('#reg-email').value = '';
+                $('#reg-password').value = '';
+                $('#reg-name').value = '';
+                $('#reg-sede').value = '';
+            } catch (err) {
+                errorEl.textContent = err.message.includes('User already registered') 
+                    ? 'Este email ya está registrado' 
+                    : err.message;
+                errorEl.classList.remove('hidden');
+                auditLog('REGISTER_FAILED', { reason: 'server_error', error: err.message });
+            } finally {
+                $('#register-btn').disabled = false;
+                $('#register-btn').textContent = 'Crear Usuario';
+            }
+        }
+
+        async function switchUser() {
+            const currentUserName = currentProfile?.name || currentUser?.name;
+            if (demoMode) {
+                auditLog('LOGOUT', { user: currentUserName, mode: 'demo' });
+                currentUser = null;
+                localStorage.removeItem(CURRENT_USER_KEY);
+            } else {
+                await signOut();
+                auditLog('LOGOUT', { user: currentUserName });
+                currentProfile = null;
+            }
+            updateUserBadge();
+            const app = $('#app');
+            app.classList.add('hidden');
+            setTimeout(() => openLoginModal(), 50);
+        }
+
+        // Detectar file:// protocol y avisar
+        if (location.protocol === 'file:') {
+            document.body.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+                    <div class="max-w-xl mx-auto text-center bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
+                            <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900 mb-2">Abrir con servidor local</h2>
+                        <p class="text-gray-600 mb-6">Este archivo no funciona abriéndolo directamente (file://) por seguridad del navegador (CORS, localStorage, módulos ES).</p>
+                        <div class="space-y-3 text-left">
+                            <p class="font-medium text-gray-700">Opciones rápidas:</p>
+                            <div class="bg-gray-100 rounded-lg p-4 font-mono text-sm space-y-2">
+                                <div><span class="text-green-600"># Python 3</span></div>
+                                <div class="ml-4">python -m http.server 8080</div>
+                                <div><span class="text-blue-600"># Node.js (npx)</span></div>
+                                <div class="ml-4">npx serve .</div>
+                                <div><span class="text-purple-600"># PHP</span></div>
+                                <div class="ml-4">php -S localhost:8080</div>
+                                <div><span class="text-orange-600"># VS Code</span></div>
+                                <div class="ml-4">Extensión "Live Server" → Click derecho → "Open with Live Server"</div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-4">Luego abre <code class="bg-gray-100 px-1.5 py-0.5 rounded">http://localhost:8080</code> en el navegador</p>
+                        </div>
+                        <button onclick="location.reload()" class="mt-6 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">Reintentar tras iniciar servidor</button>
+                    </div>
+                </div>
+            `;
+            throw new Error('file:// protocol not supported');
+        }
+
+        function addActivity(cedula, nombre, action) {
+            const entry = {
+                id: Date.now() + Math.random(),
+                cedula,
+                nombre,
+                action,
+                user: currentProfile?.name || currentUser?.name || null,
+                sede: currentProfile?.sede_nombre || null,
+                timestamp: new Date().toISOString()
+            };
+            activityLog.unshift(entry);
+            if (activityLog.length > 500) activityLog.pop();
+            renderActivity();
+            saveActivityLog();
+            saveActivityLogToSupabase(entry);
+        }
+
+        function renderActivity() {
+            const list = $('#activity-content');
+            if (activityLog.length === 0) {
+                list.innerHTML = '<div class="px-4 py-8 text-center text-gray-400 text-sm">Sin actividad reciente</div>';
+                return;
+            }
+            list.innerHTML = activityLog.map(entry => `
+                <div class="px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-gray-900 truncate">${escapeHtml(entry.nombre)}</p>
+                            <p class="text-xs text-gray-500 font-mono">${escapeHtml(entry.cedula)}</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-right">
+                            <span class="status-badge ${entry.action === 'REGISTRO' ? 'status-registered' : 'status-pending'}">
+                                ${entry.action === 'REGISTRO' ? 'Registrado' : 'Consulta'}
+                            </span>
+                            ${entry.user ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">${escapeHtml(entry.user)}</span>` : ''}
+                            ${entry.sede ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">${escapeHtml(entry.sede)}</span>` : ''}
+                            <span class="text-xs text-gray-400 whitespace-nowrap">${formatTime(entry.timestamp)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateConnectionStatus(connected) {
+            const dot = $('#status-dot');
+            const text = $('#status-text');
+            const container = $('#connection-status');
+            if (demoMode) {
+                dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+                text.textContent = 'Modo Demo (Local)';
+                container.className = 'flex items-center gap-2 text-sm px-3 py-1.5 rounded-full bg-amber-50 text-amber-700';
+                return;
+            }
+            if (connected) {
+                dot.className = 'w-2 h-2 rounded-full bg-green-500';
+                text.textContent = 'Conectado (Tiempo Real)';
+                container.className = 'flex items-center gap-2 text-sm px-3 py-1.5 rounded-full bg-green-50 text-green-700';
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                text.textContent = 'Desconectado';
+                container.className = 'flex items-center gap-2 text-sm px-3 py-1.5 rounded-full bg-red-50 text-red-700';
+            }
+        }
+
+function updateStats() {
+            if (demoMode) {
+                const total = demoData.size;
+                let registered = 0;
+                demoData.forEach(v => { if (v.ya_registrado) registered++; });
+                $('#stat-total').textContent = total.toLocaleString('es-ES');
+                $('#stat-voted').textContent = registered.toLocaleString('es-ES');
+                $('#stat-pending').textContent = (total - registered).toLocaleString('es-ES');
+                $('#stats-bar').style.display = 'grid';
+                return;
+            }
+            if (!sbClient) return;
+            sbClient.from('padron').select('ya_registrado', { count: 'exact', head: true })
+                .then(({ count: total, error }) => {
+                    if (error) throw error;
+                    return sbClient.from('padron').select('ya_registrado', { count: 'exact', head: true }).eq('ya_registrado', true)
+                        .then(({ count: registered }) => ({ total, registered }));
+                })
+                .then(({ total, registered }) => {
+                    $('#stat-total').textContent = total?.toLocaleString('es-ES') || '0';
+                    $('#stat-voted').textContent = registered?.toLocaleString('es-ES') || '0';
+                    $('#stat-pending').textContent = ((total || 0) - (registered || 0)).toLocaleString('es-ES');
+                    $('#stats-bar').style.display = 'grid';
+                })
+                .catch(err => console.error('Error stats:', err));
+        }
+
+        // ============================================
+        // MODO DEMO (LOCAL)
+        // ============================================
+        async function loadDemoData() {
+            const saved = localStorage.getItem(DEMO_KEY);
+            if (saved) {
+                try {
+                    // Intentar descifrar primero (nuevo formato)
+                    const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                    if (decrypted && Array.isArray(decrypted)) {
+                        demoData = new Map(decrypted.map(v => [v.cedula, v]));
+                    } else {
+                        // Decryption failed or returned null - data might be legacy plain JSON
+                        try {
+                            const arr = JSON.parse(saved);
+                            if (Array.isArray(arr)) {
+                                demoData = new Map(arr.map(v => [v.cedula, v]));
+                                await saveDemoData(); // Guardar encriptado
+                            } else {
+                                demoData = new Map();
+                            }
+                        } catch {
+                            demoData = new Map();
+                        }
+                    }
+                } catch {
+                    try {
+                        const arr = JSON.parse(saved);
+                        if (Array.isArray(arr)) {
+                            demoData = new Map(arr.map(v => [v.cedula, v]));
+                            await saveDemoData();
+                        } else {
+                            demoData = new Map();
+                        }
+                    } catch {
+                        demoData = new Map();
+                    }
+                }
+            }
+            // Si no hay datos, cargar datos de prueba
+            if (demoData.size === 0) {
+                const sample = [
+                    { cedula: '12345678', nombre: 'Juan Pérez García', orden: 1, mesa: 101, referente: 'Carlos R.', zona_votacion: 'Escuela N° 123', ya_registrado: false, fecha_registro: null, registrado_por: null },
+                    { cedula: '87654321', nombre: 'María González López', orden: 2, mesa: 101, referente: 'Ana M.', zona_votacion: 'Escuela N° 123', ya_registrado: false, fecha_registro: null, registrado_por: null },
+                    { cedula: '11223344', nombre: 'Carlos Rodríguez Ruiz', orden: 3, mesa: 102, referente: 'Pedro J.', zona_votacion: 'Colegio Nacional', ya_registrado: true, fecha_registro: new Date(Date.now() - 3600000).toISOString(), registrado_por: 'Operador Demo' },
+                    { cedula: '44332211', nombre: 'Ana Martínez Fernández', orden: 4, mesa: 102, referente: 'Luis S.', zona_votacion: 'Colegio Nacional', ya_registrado: false, fecha_registro: null, registrado_por: null },
+                    { cedula: '55667788', nombre: 'Luis Sánchez Romero', orden: 5, mesa: 103, referente: 'María G.', zona_votacion: 'Liceo Municipal', ya_registrado: true, fecha_registro: new Date(Date.now() - 7200000).toISOString(), registrado_por: 'Operador Demo' },
+                    { cedula: '99887766', nombre: 'Laura Torres Molina', orden: 6, mesa: 103, referente: 'Sofía V.', zona_votacion: 'Liceo Municipal', ya_registrado: false, fecha_registro: null, registrado_por: null },
+                    { cedula: '11112222', nombre: 'Pedro Jiménez Herrera', orden: 7, mesa: 104, referente: 'Juan P.', zona_votacion: 'Escuela Técnica', ya_registrado: false, fecha_registro: null, registrado_por: null },
+                    { cedula: '33334444', nombre: 'Sofía Vargas Castro', orden: 8, mesa: 104, referente: 'Carlos R.', zona_votacion: 'Escuela Técnica', ya_registrado: false, fecha_registro: null, registrado_por: null },
+                ];
+                sample.forEach(v => demoData.set(v.cedula, v));
+                await saveDemoData();
+            }
+            updateStats();
+            updateConnectionStatus(false);
+            showToast('Modo Demo activado - Datos de prueba cargados', 'info');
+        }
+
+        async function saveDemoData() {
+            const arr = Array.from(demoData.values());
+            const encrypted = await Security.encryptData(arr, getEncryptionKey());
+            if (encrypted) {
+                localStorage.setItem(DEMO_KEY, encrypted);
+            } else {
+                // Fallback sin encriptar si falla
+                localStorage.setItem(DEMO_KEY, JSON.stringify(arr));
+            }
+        }
+
+        async function saveUsers() {
+            const encrypted = await Security.encryptData(users, getEncryptionKey());
+            if (encrypted) {
+                localStorage.setItem(USERS_KEY, encrypted);
+            } else {
+                localStorage.setItem(USERS_KEY, JSON.stringify(users));
+            }
+        }
+
+        async function loadUsers() {
+            const saved = localStorage.getItem(USERS_KEY);
+            users = [];
+            if (!saved) return;
+            try {
+                const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                if (decrypted && Array.isArray(decrypted)) {
+                    users = decrypted;
+                } else {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) users = parsed;
+                }
+            } catch {
+                users = [];
+            }
+        }
+
+        function saveCurrentUser() {
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+        }
+
+        async function loadActivityLog() {
+            const saved = localStorage.getItem(ACTIVITY_LOG_KEY);
+            if (saved) {
+                try {
+                    const decrypted = await Security.decryptData(saved, getEncryptionKey());
+                    if (decrypted && Array.isArray(decrypted)) {
+                        activityLog = decrypted;
+                    } else {
+                        // Decryption failed or returned null - data might be legacy plain JSON
+                        // Try to parse as plain JSON, but if that fails, just use empty array
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (Array.isArray(parsed)) {
+                                activityLog = parsed;
+                                await saveActivityLog(); // Migrar a encriptado
+                            } else {
+                                activityLog = [];
+                            }
+                        } catch {
+                            activityLog = [];
+                        }
+                    }
+                } catch {
+                    activityLog = [];
+                }
+            }
+        }
+
+        async function loadActivityLogFromSupabase() {
+            if (demoMode || !sbClient) return;
+            try {
+                const { data, error } = await sbClient
+                    .from('activity_log')
+                    .select('*')
+                    .order('timestamp', { ascending: false })
+                    .limit(500);
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    activityLog = data.map(row => ({
+                        id: row.id,
+                        cedula: row.cedula,
+                        nombre: row.nombre,
+                        action: row.accion,
+                        user: row.usuario,
+                        sede: row.sede,
+                        timestamp: row.timestamp
+                    }));
+                    renderActivity();
+                }
+            } catch (err) {
+                console.error('Error loading activity log from Supabase:', err);
+            }
+        }
+
+        async function saveActivityLog() {
+            // Keep only last 500 entries in localStorage
+            const toSave = activityLog.slice(0, 500);
+            const encrypted = await Security.encryptData(toSave, getEncryptionKey());
+            if (encrypted) {
+                localStorage.setItem(ACTIVITY_LOG_KEY, encrypted);
+            } else {
+                localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(toSave));
+            }
+        }
+
+        async function saveActivityLogToSupabase(entry) {
+            if (demoMode || !sbClient) return;
+            try {
+                const { error } = await sbClient.from('activity_log').insert({
+                    cedula: entry.cedula,
+                    nombre: entry.nombre,
+                    accion: entry.action,
+                    usuario: entry.user,
+                    sede: entry.sede,
+                    timestamp: entry.timestamp
+                });
+                if (error) console.error('Error saving activity to Supabase:', error);
+            } catch (err) {
+                console.error('Error saving activity to Supabase:', err);
+            }
+        }
+
+        async function enableDemoMode() {
+            demoMode = true;
+            currentProfile = null;
+            await loadDemoData();
+            await loadUsers();
+            updateModeButton();
+            await checkLoginAndInit();
+        }
+
+        async function switchToSupabase() {
+            demoMode = false;
+            currentUser = null;
+            updateModeButton();
+            const saved = localStorage.getItem(CONFIG_KEY);
+            if (saved) {
+                try {
+                    const { url, key } = JSON.parse(saved);
+                    if (url && key) {
+                        const connected = await initSupabase(url, key);
+                        if (!connected) {
+                            showToast('No se pudo conectar a Supabase. Se mantiene el Modo Demo.', 'warning', 6000);
+                            await enableDemoMode();
+                            return;
+                        }
+                        await checkLoginAndInit();
+                        return;
+                    }
+                } catch {}
+            }
+            openConfigModal();
+        }
+
+        async function checkLoginAndInit() {
+            if (demoMode) {
+                // Demo mode: check for saved currentUser first
+                await loadActivityLog();
+                await loadUsers();
+                renderActivity();
+                
+                // Check for saved user session
+                const savedUser = localStorage.getItem(CURRENT_USER_KEY);
+                if (savedUser) {
+                    try {
+                        currentUser = JSON.parse(savedUser);
+                        updateUserBadge();
+                        const app = $('#app');
+                        const modal = $('#login-modal');
+                        app.classList.remove('hidden');
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        modal.style.display = 'none';
+                        app.offsetHeight;
+                        $('#cedula-input').focus();
+                        return;
+                    } catch {
+                        // Invalid saved user, clear and show login
+                        localStorage.removeItem(CURRENT_USER_KEY);
+                    }
+                }
+                
+                // No valid session, show login
+                $('#app').classList.add('hidden');
+                openLoginModal();
+                return;
+            }
+            
+            // Modo Supabase: verificar sesión de Auth
+            await loadCurrentSession();
+            await loadSedes();
+            
+            if (currentProfile) {
+                updateUserBadge();
+                const app = $('#app');
+                const modal = $('#login-modal');
+                app.classList.remove('hidden');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.style.display = 'none';
+                app.offsetHeight;
+                $('#cedula-input').focus();
+                
+                // Cargar log de actividad SOLO desde Supabase (evita duplicados con localStorage)
+                await loadActivityLogFromSupabase();
+                
+                // Escuchar cambios de auth (una sola vez por cliente)
+                if (!authListenerAttached) {
+                    authListenerAttached = true;
+                    sbClient.auth.onAuthStateChange((event, session) => {
+                        if (demoMode) return;
+                        if (event === 'SIGNED_OUT' || !session) {
+                            currentProfile = null;
+                            updateUserBadge();
+                            $('#app').classList.add('hidden');
+                            openLoginModal();
+                        }
+                    });
+                }
+            } else {
+                $('#app').classList.add('hidden');
+                openLoginModal();
+            }
+        }
+
+        // ============================================
+        // SUPABASE
+        // ============================================
+        function initSupabase(url, key) {
+            // Si ya está conectado con las mismas credenciales, no recrear el cliente
+            if (sbClient && sbClientUrl === url && sbClientKey === key) return Promise.resolve(true);
+
+            // Clean up existing client and channel
+            if (channel) {
+                try { sbClient.removeChannel(channel); } catch {}
+                channel = null;
+            }
+            if (sbClient) {
+                try { sbClient.auth.signOut(); } catch {}
+            }
+            
+            sbClient = window.supabase.createClient(url, key, {
+                realtime: { params: { eventsPerSecond: 10 } }
+            });
+            sbClientUrl = url;
+            sbClientKey = key;
+            authListenerAttached = false;
+
+            // Test connection
+            return sbClient.from('padron').select('cedula', { count: 'exact', head: true, limit: 1 })
+                .then(({ error }) => {
+                    if (error) throw error;
+                    updateConnectionStatus(true);
+                    showToast('Conectado a Supabase correctamente', 'success');
+                    setupRealtime();
+                    updateStats();
+                    return true;
+                })
+                .catch(err => {
+                    updateConnectionStatus(false);
+                    showToast(`Error de conexión: ${err.message}`, 'error');
+                    console.error(err);
+                    return false;
+                });
+        }
+
+        function setupRealtime() {
+            // Canal principal: padron
+            channel = sbClient.channel('padron-changes')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'padron'
+                }, (payload) => {
+                    console.log('Realtime padron:', payload);
+                    updateStats();
+                    const currentCedula = $('#cedula-input').value.trim();
+                    if (currentCedula && payload.new && payload.new.cedula === currentCedula) {
+                        handleSearchResult(payload.new, currentCedula);
+                    }
+                })
+                .subscribe((status, err) => {
+                    console.log('Realtime padron status:', status);
+                    if (status === 'CHANNEL_ERROR' || err) {
+                        console.error('Realtime error:', err);
+                        showToast('Realtime no disponible. Ejecuta en SQL: alter publication supabase_realtime add table padron, profiles, sedes, activity_log;', 'warning', 8000);
+                    }
+                });
+
+            // Canal para perfiles (cambios de usuario/sede)
+            const profilesChannel = sbClient.channel('profiles-changes')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'profiles'
+                }, (payload) => {
+                    console.log('Realtime profiles:', payload);
+                    // Si es mi perfil, recargar
+                    if (currentProfile && payload.new && payload.new.id === currentProfile.id) {
+                        loadCurrentSession().then(() => {
+                            updateUserBadge();
+                        });
+                    }
+                })
+                .subscribe();
+
+            // Canal para sedes
+            const sedesChannel = sbClient.channel('sedes-changes')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'sedes'
+                }, (payload) => {
+                    console.log('Realtime sedes:', payload);
+                    loadSedes();
+                })
+                .subscribe();
+
+            // Canal para activity_log (log de actividad en tiempo real)
+            const activityChannel = sbClient.channel('activity-log-changes')
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'activity_log'
+                }, (payload) => {
+                    console.log('Realtime activity_log:', payload);
+                    if (payload.new) {
+                        const entry = {
+                            id: payload.new.id,
+                            cedula: payload.new.cedula,
+                            nombre: payload.new.nombre,
+                            action: payload.new.accion,
+                            user: payload.new.usuario,
+                            sede: payload.new.sede,
+                            timestamp: payload.new.timestamp
+                        };
+                        // Evitar duplicados si ya está en el log local
+                        if (!activityLog.some(e => e.id === entry.id)) {
+                            activityLog.unshift(entry);
+                            if (activityLog.length > 500) activityLog.pop();
+                            renderActivity();
+                        }
+                    }
+                })
+                .subscribe();
+        }
+
+        // ============================================
+        // BÚSQUEDA Y RESULTADOS
+        // ============================================
+        async function searchCedula(cedula) {
+            // Rate limiting por sesión
+            const sessionKey = currentProfile?.id || currentUser?.id || 'anonymous';
+            try {
+                Security.checkRateLimit(`search:${sessionKey}`, 60, 60000); // 60 por minuto
+            } catch (rateErr) {
+                showToast(rateErr.message, 'warning');
+                return;
+            }
+
+            // Validación de cédula
+            const validation = Security.validateCedula(cedula);
+            if (!validation.valid) {
+                showToast(validation.error, 'warning');
+                return;
+            }
+            const cleanCedula = validation.clean;
+
+            const isLoggedIn = demoMode ? currentUser : currentProfile;
+            if (!isLoggedIn) {
+                showToast('Debes iniciar sesión primero', 'warning');
+                openLoginModal();
+                return;
+            }
+
+            $('#search-btn').disabled = true;
+            $('#search-btn').innerHTML = `
+                <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                Buscando...
+            `;
+
+            try {
+                let voter = null;
+                if (demoMode) {
+                    await new Promise(r => setTimeout(r, 150));
+                    voter = demoData.get(cleanCedula) || null;
+                } else {
+                    if (!sbClient) {
+                        showToast('Primero configura la conexión a Supabase', 'warning');
+                        openConfigModal();
+                        return;
+                    }
+                    const { data, error } = await sbClient
+                        .from('padron')
+                        .select('*')
+                        .eq('cedula', cleanCedula)
+                        .single();
+                    if (error && error.code !== 'PGRST116') throw error;
+                    voter = data;
+                }
+
+                handleSearchResult(voter, cleanCedula);
+                addActivity(cleanCedula, voter?.nombre || 'Desconocido', 'CONSULTA');
+                
+                // Audit log para consultas
+                auditLog('SEARCH', { cedula: cleanCedula, found: !!voter });
+            } catch (err) {
+                showToast(`Error al buscar: ${err.message}`, 'error');
+                showResultError(cleanCedula);
+            } finally {
+                $('#search-btn').disabled = false;
+                $('#search-btn').innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Consultar
+                `;
+            }
+        }
+
+        function handleSearchResult(voter, cedula) {
+            const card = $('#result-card');
+            const section = $('#result-section');
+            const input = $('#cedula-input');
+
+            if (!voter) {
+                showResultNotFound(cedula);
+                section.classList.remove('hidden');
+                return;
+            }
+
+            if (voter.ya_registrado) {
+                showResultRegistered(voter);
+            } else {
+                showResultCanRegister(voter);
+            }
+            section.classList.remove('hidden');
+            input.value = '';
+            input.focus();
+        }
+
+        function showResultCanRegister(voter) {
+            const infoBoxes = `
+                <div class="flex gap-4 justify-center mb-4 flex-wrap">
+                    ${voter.orden ? `
+                        <div class="bg-white border-2 border-green-300 rounded-xl px-6 py-3 min-w-[120px] shadow-sm">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">ORDEN</p>
+                            <p id="copy-orden" class="text-2xl md:text-3xl font-bold text-green-700 font-mono copyable" title="Click para copiar">${escapeHtml(String(voter.orden))}</p>
+                        </div>
+                    ` : ''}
+                    ${voter.mesa ? `
+                        <div class="bg-white border-2 border-blue-300 rounded-xl px-6 py-3 min-w-[120px] shadow-sm">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">MESA</p>
+                            <p id="copy-mesa" class="text-2xl md:text-3xl font-bold text-blue-700 font-mono copyable" title="Click para copiar">${escapeHtml(String(voter.mesa))}</p>
+                        </div>
+                    ` : ''}
+                    ${voter.zona_votacion ? `
+                        <div class="bg-white border-2 border-purple-300 rounded-xl px-6 py-3 min-w-[180px] shadow-sm">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">ZONA VOTACIÓN</p>
+                            <p id="copy-zona" class="text-lg md:text-xl font-bold text-purple-700 copyable" title="Click para copiar">${escapeHtml(voter.zona_votacion)}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            const referenteInfo = voter.referente ? `<p class="text-xs text-gray-400 mt-2">Referente: <span class="font-medium text-gray-600">${escapeHtml(voter.referente)}</span></p>` : '';
+            $('#result-card').innerHTML = `
+                <div class="card bg-green-50 border-2 border-green-200 p-6 md:p-8 text-center pulse-green">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                        <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">PERSONA HABILITADA</p>
+                    <h3 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">${escapeHtml(voter.nombre)}</h3>
+                    <p class="text-gray-500 mb-3">Cédula: <span id="copy-cedula" class="font-mono font-medium text-gray-700 copyable" title="Click para copiar">${escapeHtml(voter.cedula)}</span></p>
+                    ${infoBoxes}
+                    ${referenteInfo}
+                    <button id="vote-btn" class="btn-primary w-full md:w-64 mx-auto text-lg mt-4">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        REGISTRAR
+                    </button>
+                </div>
+            `;
+            $('#vote-btn').onclick = () => registerVote(voter.cedula, voter.nombre);
+            $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada');
+            if (voter.orden) $('#copy-orden').onclick = () => copyToClipboard(String(voter.orden), 'Orden copiado');
+            if (voter.mesa) $('#copy-mesa').onclick = () => copyToClipboard(String(voter.mesa), 'Mesa copiada');
+            if (voter.zona_votacion) $('#copy-zona').onclick = () => copyToClipboard(voter.zona_votacion, 'Zona copiada');
+            $('#activity-section').classList.remove('hidden');
+        }
+
+        function showResultRegistered(voter) {
+            const registradoPor = voter.registrado_por ? ` por <strong>${escapeHtml(voter.registrado_por)}</strong>` : '';
+            const infoBoxes = `
+                <div class="flex gap-4 justify-center mb-4 flex-wrap">
+                    ${voter.orden ? `
+                        <div class="bg-white border-2 border-green-300 rounded-xl px-6 py-3 min-w-[120px] shadow-sm">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">ORDEN</p>
+                            <p id="copy-orden" class="text-2xl md:text-3xl font-bold text-green-700 font-mono copyable" title="Click para copiar">${escapeHtml(String(voter.orden))}</p>
+                        </div>
+                    ` : ''}
+                    ${voter.mesa ? `
+                        <div class="bg-white border-2 border-blue-300 rounded-xl px-6 py-3 min-w-[120px] shadow-sm">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">MESA</p>
+                            <p id="copy-mesa" class="text-2xl md:text-3xl font-bold text-blue-700 font-mono copyable" title="Click para copiar">${escapeHtml(String(voter.mesa))}</p>
+                        </div>
+                    ` : ''}
+                    ${voter.zona_votacion ? `
+                        <div class="bg-white border-2 border-purple-300 rounded-xl px-6 py-3 min-w-[180px] shadow-sm">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">ZONA VOTACIÓN</p>
+                            <p id="copy-zona" class="text-lg md:text-xl font-bold text-purple-700 copyable" title="Click para copiar">${escapeHtml(voter.zona_votacion)}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            const referenteInfo = voter.referente ? `<p class="text-xs text-gray-400 mt-2">Referente: <span class="font-medium text-gray-600">${escapeHtml(voter.referente)}</span></p>` : '';
+            $('#result-card').innerHTML = `
+                <div class="card bg-red-50 border-2 border-red-200 p-6 md:p-8 text-center shake">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                        <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </div>
+                    <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">¡ATENCIÓN!</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-red-700 mb-2">ESTA PERSONA YA ESTÁ REGISTRADA</h3>
+                    <p class="text-gray-900 text-xl font-medium mb-4">${escapeHtml(voter.nombre)}</p>
+                    <p class="text-gray-500 mb-3">Cédula: <span id="copy-cedula" class="font-mono font-medium text-gray-700 copyable" title="Click para copiar">${escapeHtml(voter.cedula)}</span></p>
+                    ${infoBoxes}
+                    ${referenteInfo}
+                    <div class="bg-red-100 rounded-xl p-4 inline-block">
+                        <p class="text-sm text-gray-600">Fecha y hora de registro${registradoPor}:</p>
+                        <p class="text-lg font-mono font-bold text-red-800 mt-1">${formatDate(voter.fecha_registro)}</p>
+                    </div>
+                    <button class="btn-secondary mt-6 w-full md:w-64 mx-auto text-lg cursor-not-allowed" disabled>
+                        <svg class="w-6 h-6 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        YA REGISTRADO
+                    </button>
+                </div>
+            `;
+            $('#copy-cedula').onclick = () => copyToClipboard(voter.cedula, 'Cédula copiada');
+            if (voter.orden) $('#copy-orden').onclick = () => copyToClipboard(String(voter.orden), 'Orden copiado');
+            if (voter.mesa) $('#copy-mesa').onclick = () => copyToClipboard(String(voter.mesa), 'Mesa copiada');
+            if (voter.zona_votacion) $('#copy-zona').onclick = () => copyToClipboard(voter.zona_votacion, 'Zona copiada');
+            $('#activity-section').classList.remove('hidden');
+        }
+
+        function showResultNotFound(cedula) {
+            $('#result-card').innerHTML = `
+                <div class="card bg-amber-50 border-2 border-amber-200 p-6 md:p-8 text-center">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
+                        <svg class="w-10 h-10 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">NO ENCONTRADA EN PADRÓN</p>
+                    <h3 class="text-2xl md:text-3xl font-bold text-amber-700 mb-2">Cédula: <span class="font-mono">${escapeHtml(cedula)}</span></h3>
+                    <p class="text-gray-500 mb-4">Nombre: <span class="font-medium text-amber-700">Desconocido</span></p>
+                    <p class="text-xs text-gray-400 mb-6">La cédula no existe en el padrón cargado.</p>
+                    <button id="register-unknown-btn" class="btn-primary w-full md:w-64 mx-auto text-lg" style="background-color: #d97706; border-color: #d97706;">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                        REGISTRAR PERSONA DESCONOCIDA
+                    </button>
+                </div>
+            `;
+            $('#register-unknown-btn').onclick = () => openRegisterUnknownModal(cedula);
+            $('#activity-section').classList.remove('hidden');
+        }
+
+        function showResultError(cedula) {
+            $('#result-card').innerHTML = `
+                <div class="card bg-red-50 border-2 border-red-200 p-6 md:p-8 text-center">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                        <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">ERROR DE CONEXIÓN</p>
+                    <h3 class="text-2xl font-bold text-red-700 mb-2">No se pudo consultar el padrón</h3>
+                    <p class="text-gray-500">Verifique su conexión e intente nuevamente.</p>
+                </div>
+            `;
+            $('#result-section').classList.remove('hidden');
+        }
+
+        // ============================================
+        // REGISTRO DESCONOCIDO MODAL
+        // ============================================
+        let pendingUnknownCedula = null;
+
+        function openRegisterUnknownModal(cedula) {
+            pendingUnknownCedula = cedula;
+            $('#unknown-cedula').textContent = cedula;
+            $('#unknown-nombre').value = '';
+            $('#unknown-orden').value = '';
+            $('#unknown-mesa').value = '';
+            $('#register-unknown-modal').classList.remove('hidden');
+            $('#register-unknown-modal').classList.add('flex');
+            setTimeout(() => $('#unknown-nombre').focus(), 100);
+        }
+
+        function closeRegisterUnknownModal() {
+            $('#register-unknown-modal').classList.add('hidden');
+            $('#register-unknown-modal').classList.remove('flex');
+            pendingUnknownCedula = null;
+        }
+
+        function confirmRegisterUnknown() {
+            const nombre = $('#unknown-nombre').value.trim();
+            const nameValidation = Security.validateName(nombre);
+            if (!nameValidation.valid) {
+                showToast(nameValidation.error, 'warning');
+                $('#unknown-nombre').focus();
+                return;
+            }
+            
+            let orden = null, mesa = null, referente = null, zona = null;
+            
+            const ordenVal = $('#unknown-orden').value.trim();
+            if (ordenVal) {
+                const v = Security.validateNumber(ordenVal, 1, 9999);
+                if (!v.valid) {
+                    showToast(`Orden: ${v.error}`, 'warning');
+                    $('#unknown-orden').focus();
+                    return;
+                }
+                orden = v.clean;
+            }
+            
+            const mesaVal = $('#unknown-mesa').value.trim();
+            if (mesaVal) {
+                const v = Security.validateNumber(mesaVal, 1, 9999);
+                if (!v.valid) {
+                    showToast(`Mesa: ${v.error}`, 'warning');
+                    $('#unknown-mesa').focus();
+                    return;
+                }
+                mesa = v.clean;
+            }
+            
+            const referenteVal = $('#unknown-referente').value.trim();
+            if (referenteVal) {
+                const v = Security.validateText(referenteVal, 50);
+                if (!v.valid) {
+                    showToast(`Referente: ${v.error}`, 'warning');
+                    $('#unknown-referente').focus();
+                    return;
+                }
+                referente = v.clean;
+            }
+            
+            const zonaVal = $('#unknown-zona').value.trim();
+            if (zonaVal) {
+                const v = Security.validateText(zonaVal, 100);
+                if (!v.valid) {
+                    showToast(`Zona: ${v.error}`, 'warning');
+                    $('#unknown-zona').focus();
+                    return;
+                }
+                zona = v.clean;
+            }
+            
+            const cedula = pendingUnknownCedula;
+            closeRegisterUnknownModal();
+            registerVote(cedula, nameValidation.clean, true, orden, mesa, referente, zona);
+        }
+
+        // ============================================
+        // MENU DROPDOWN
+        // ============================================
+        function toggleMenuDropdown() {
+            const content = $('#menu-content');
+            content.classList.toggle('hidden');
+        }
+
+        function closeMenuDropdown() {
+            $('#menu-content').classList.add('hidden');
+        }
+
+        // ============================================
+        // LOG MODAL
+        // ============================================
+        function openLogModal() {
+            closeMenuDropdown();
+            populateLogUserFilter();
+            renderLogModal();
+            $('#log-modal').classList.remove('hidden');
+            $('#log-modal').classList.add('flex');
+        }
+
+        function closeLogModal() {
+            $('#log-modal').classList.add('hidden');
+            $('#log-modal').classList.remove('flex');
+        }
+
+        function populateLogUserFilter() {
+            const select = $('#log-filter-user');
+            const usersInLog = [...new Set(activityLog.map(e => e.user).filter(Boolean))];
+            select.innerHTML = '<option value="">Todos los usuarios</option>' +
+                usersInLog.map(u => `<option value="${Security.sanitizeForAttribute(u)}">${escapeHtml(u)}</option>`).join('');
+        }
+
+        function renderLogModal() {
+            const userFilter = $('#log-filter-user').value;
+            const actionFilter = $('#log-filter-action').value;
+
+            let filtered = activityLog;
+            if (userFilter) filtered = filtered.filter(e => e.user === userFilter);
+            if (actionFilter) filtered = filtered.filter(e => e.action === actionFilter);
+
+            const list = $('#log-list');
+            $('#log-count').textContent = `${filtered.length} registro${filtered.length !== 1 ? 's' : ''}`;
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-400 py-8">No hay actividad que mostrar</div>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(entry => `
+                <div class="px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-gray-900 truncate">${escapeHtml(entry.nombre)}</p>
+                            <p class="text-xs text-gray-500 font-mono">${escapeHtml(entry.cedula)}</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-right">
+                            <span class="status-badge ${entry.action === 'REGISTRO' ? 'status-registered' : 'status-pending'}">
+                                ${entry.action === 'REGISTRO' ? 'Registrado' : 'Consulta'}
+                            </span>
+                            ${entry.user ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">${escapeHtml(entry.user)}</span>` : ''}
+                            ${entry.sede ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">${escapeHtml(entry.sede)}</span>` : ''}
+                            <span class="text-xs text-gray-400 whitespace-nowrap">${formatTime(entry.timestamp)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function exportLogCSV() {
+            if (activityLog.length === 0) {
+                showToast('No hay datos para exportar', 'warning');
+                return;
+            }
+            const headers = ['Timestamp', 'Cédula', 'Nombre', 'Acción', 'Usuario'];
+            const rows = activityLog.map(e => [
+                formatDate(e.timestamp),
+                e.cedula,
+                e.nombre,
+                e.action,
+                e.user || ''
+            ]);
+            const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+            downloadCSV(csv, `log-actividad-${new Date().toISOString().split('T')[0]}.csv`);
+            showToast('Log exportado a CSV', 'success');
+        }
+
+        // ============================================
+        // VIEW DATA MODAL
+        // ============================================
+        function openViewDataModal() {
+            closeMenuDropdown();
+            renderViewDataModal();
+            $('#view-data-modal').classList.remove('hidden');
+            $('#view-data-modal').classList.add('flex');
+        }
+
+        function closeViewDataModal() {
+            $('#view-data-modal').classList.add('hidden');
+            $('#view-data-modal').classList.remove('flex');
+        }
+
+        async function renderViewDataModal() {
+            const search = $('#view-data-search').value.toLowerCase().trim();
+            const statusFilter = $('#view-data-filter-status').value;
+
+            let data = [];
+            if (demoMode) {
+                data = Array.from(demoData.values());
+            } else if (sbClient) {
+                try {
+                    let query = sbClient.from('padron').select('*').order('cedula');
+                    if (statusFilter === 'registered') {
+                        query = query.eq('ya_registrado', true);
+                    } else if (statusFilter === 'pending') {
+                        query = query.eq('ya_registrado', false);
+                    }
+                    const { data: supabaseData, error } = await query.limit(5000);
+                    if (error) throw error;
+                    data = supabaseData || [];
+                } catch (err) {
+                    console.error('Error fetching data:', err);
+                    showToast('Error al cargar datos de Supabase', 'error');
+                    data = Array.from(demoData.values());
+                }
+            } else {
+                data = Array.from(demoData.values());
+            }
+
+            let filtered = data;
+            if (statusFilter === 'registered') {
+                filtered = filtered.filter(v => v.ya_registrado);
+            } else if (statusFilter === 'pending') {
+                filtered = filtered.filter(v => !v.ya_registrado);
+            }
+            if (search) {
+                filtered = filtered.filter(v =>
+                    String(v.cedula || '').includes(search) ||
+                    String(v.nombre || '').toLowerCase().includes(search)
+                );
+            }
+
+            const tbody = $('#view-data-rows');
+            const empty = $('#view-data-empty');
+            $('#view-data-count').textContent = `${filtered.length} registro${filtered.length !== 1 ? 's' : ''}`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = filtered.map(v => `
+                <tr class="hover:bg-gray-50">
+                    <td class="py-2 px-2 font-mono text-gray-700">${escapeHtml(v.cedula)}</td>
+                    <td class="py-2 px-2 text-gray-900">${escapeHtml(v.nombre)}</td>
+                    <td class="py-2 px-2 text-gray-700">${v.orden != null ? escapeHtml(v.orden.toString()) : '-'}</td>
+                    <td class="py-2 px-2 text-gray-700">${v.mesa != null ? escapeHtml(v.mesa.toString()) : '-'}</td>
+                    <td class="py-2 px-2 text-gray-700">${escapeHtml(v.referente || '-')}</td>
+                    <td class="py-2 px-2 text-gray-700">${escapeHtml(v.zona_votacion || '-')}</td>
+                    <td class="py-2 px-2">
+                        <span class="px-2 py-0.5 text-xs font-medium rounded-full ${v.ya_registrado ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">
+                            ${v.ya_registrado ? 'Registrado' : 'Pendiente'}
+                        </span>
+                    </td>
+                    <td class="py-2 px-2 text-gray-500 text-xs">${v.fecha_registro ? formatDate(v.fecha_registro) : '-'}</td>
+                    <td class="py-2 px-2 text-gray-500 text-xs">${escapeHtml(v.registrado_por || '-')}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function exportViewDataCSV() {
+            let data = [];
+            if (demoMode) {
+                data = Array.from(demoData.values());
+            } else if (sbClient) {
+                try {
+                    const { data: supabaseData, error } = await sbClient.from('padron').select('*').order('cedula');
+                    if (error) throw error;
+                    data = supabaseData || [];
+                } catch (err) {
+                    console.error('Error fetching data:', err);
+                    showToast('Error al cargar datos de Supabase', 'error');
+                    data = Array.from(demoData.values());
+                }
+            } else {
+                data = Array.from(demoData.values());
+            }
+
+            if (data.length === 0) {
+                showToast('No hay datos para exportar', 'warning');
+                return;
+            }
+            const headers = ['Cédula', 'Nombre', 'Orden', 'Mesa', 'Referente', 'Zona Votación', 'Registrado', 'Fecha Registro', 'Registrado Por'];
+            const rows = data.map(v => [
+                v.cedula,
+                v.nombre,
+                v.orden != null ? v.orden.toString() : '',
+                v.mesa != null ? v.mesa.toString() : '',
+                v.referente || '',
+                v.zona_votacion || '',
+                v.ya_registrado ? 'Sí' : 'No',
+                v.fecha_registro ? formatDate(v.fecha_registro) : '',
+                v.registrado_por || ''
+            ]);
+            const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+            downloadCSV(csv, `padron-${new Date().toISOString().split('T')[0]}.csv`);
+            showToast('Padrón exportado a CSV', 'success');
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function exportBackup() {
+            const backup = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                demoData: Array.from(demoData.values()),
+                users,
+                currentUser,
+                activityLog,
+                config: localStorage.getItem(CONFIG_KEY)
+            };
+            const json = JSON.stringify(backup, null, 2);
+            const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `padron-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showToast('Backup exportado (JSON)', 'success');
+        }
+
+        function importBackup(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const backup = JSON.parse(e.target.result);
+                    if (backup.demoData) {
+                        demoData = new Map(backup.demoData.map(v => [v.cedula, v]));
+                        saveDemoData();
+                    }
+                    if (backup.users) {
+                        users = backup.users;
+                        saveUsers();
+                    }
+                    if (backup.currentUser) {
+                        currentUser = backup.currentUser;
+                        saveCurrentUser();
+                        updateUserBadge();
+                    }
+                    if (backup.activityLog) {
+                        activityLog = backup.activityLog;
+                        renderActivity();
+                        saveActivityLog();
+                    }
+                    if (backup.config) {
+                        localStorage.setItem(CONFIG_KEY, backup.config);
+                    }
+                    updateStats();
+                    showToast('Backup importado correctamente', 'success');
+                    // Reload to apply config
+                    setTimeout(() => location.reload(), 1000);
+                } catch (err) {
+                    showToast(`Error al importar backup: ${err.message}`, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ============================================
+        // REGISTRO
+        // ============================================
+        async function registerVote(cedula, nombre, isUnknown = false, orden = null, mesa = null, referente = null, zona = null) {
+            // Rate limiting
+            const sessionKey = currentProfile?.id || currentUser?.id || 'anonymous';
+            try {
+                Security.checkRateLimit(`register:${sessionKey}`, 20, 60000); // 20 por minuto
+            } catch (rateErr) {
+                showToast(rateErr.message, 'warning');
+                return;
+            }
+
+            // Validaciones
+            const cedulaValidation = Security.validateCedula(cedula);
+            if (!cedulaValidation.valid) {
+                showToast(cedulaValidation.error, 'error');
+                return;
+            }
+            
+            const nameValidation = Security.validateName(nombre);
+            if (!nameValidation.valid) {
+                showToast(nameValidation.error, 'error');
+                return;
+            }
+            
+            if (orden !== null) {
+                const ordenValidation = Security.validateNumber(orden, 1, 9999);
+                if (!ordenValidation.valid) {
+                    showToast(`Orden: ${ordenValidation.error}`, 'error');
+                    return;
+                }
+                orden = ordenValidation.clean;
+            }
+            
+            if (mesa !== null) {
+                const mesaValidation = Security.validateNumber(mesa, 1, 9999);
+                if (!mesaValidation.valid) {
+                    showToast(`Mesa: ${mesaValidation.error}`, 'error');
+                    return;
+                }
+                mesa = mesaValidation.clean;
+            }
+            
+            if (referente) {
+                const refValidation = Security.validateText(referente, 50);
+                if (!refValidation.valid) {
+                    showToast(`Referente: ${refValidation.error}`, 'error');
+                    return;
+                }
+                referente = refValidation.clean;
+            }
+            
+            if (zona) {
+                const zonaValidation = Security.validateText(zona, 100);
+                if (!zonaValidation.valid) {
+                    showToast(`Zona: ${zonaValidation.error}`, 'error');
+                    return;
+                }
+                zona = zonaValidation.clean;
+            }
+
+            const btn = $('#vote-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `
+                    <svg class="animate-spin h-6 w-6" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    Registrando...
+                `;
+            }
+
+            try {
+                const now = new Date().toISOString();
+                const registradoPor = currentProfile?.name || currentUser?.name || 'Desconocido';
+                
+                if (demoMode) {
+                    await new Promise(r => setTimeout(r, 200));
+                    
+                    if (isUnknown) {
+                        demoData.set(cedulaValidation.clean, {
+                            cedula: cedulaValidation.clean,
+                            nombre: nameValidation.clean,
+                            orden,
+                            mesa,
+                            referente,
+                            zona_votacion: zona,
+                            ya_registrado: true,
+                            fecha_registro: now,
+                            registrado_por: registradoPor
+                        });
+                    } else {
+                        const voter = demoData.get(cedulaValidation.clean);
+                        if (voter) {
+                            voter.ya_registrado = true;
+                            voter.fecha_registro = now;
+                            voter.registrado_por = registradoPor;
+                            if (zona) voter.zona_votacion = zona;
+                            demoData.set(cedulaValidation.clean, voter);
+                        }
+                    }
+                    await saveDemoData();
+                    updateStats();
+                } else {
+                    if (!sbClient) {
+                        showToast('No hay conexión a Supabase. Configure primero en "Config".', 'error');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = `
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                REGISTRAR
+                            `;
+                        }
+                        return;
+                    }
+                    // Primero obtener el registro actual para preservar nombre, orden, mesa, referente, zona_votacion
+                    let existingNombre = nameValidation.clean;
+                    let existingOrden = orden;
+                    let existingMesa = mesa;
+                    let existingReferente = referente;
+                    let existingZona = zona;
+                    
+                    if (!isUnknown) {
+                        try {
+                            const { data: existing } = await sbClient
+                                .from('padron')
+                                .select('nombre, orden, mesa, referente, zona_votacion')
+                                .eq('cedula', cedulaValidation.clean)
+                                .single();
+                            if (existing) {
+                                existingNombre = existing.nombre;
+                                existingOrden = existing.orden;
+                                existingMesa = existing.mesa;
+                                existingReferente = existing.referente;
+                                if (!zona) existingZona = existing.zona_votacion;
+                            }
+                        } catch (e) {
+                            console.warn('Could not fetch existing record:', e);
+                        }
+                    }
+                    
+                    const updateData = {
+                        cedula: cedulaValidation.clean,
+                        nombre: existingNombre,
+                        orden: existingOrden,
+                        mesa: existingMesa,
+                        referente: existingReferente,
+                        zona_votacion: existingZona,
+                        ya_registrado: true,
+                        fecha_registro: now,
+                        registrado_por: registradoPor
+                    };
+                    const { error } = await sbClient
+                        .from('padron')
+                        .upsert(updateData, { onConflict: 'cedula' });
+                    if (error) throw error;
+                    updateStats();
+                }
+
+                showToast(`Registro confirmado para ${nameValidation.clean}`, 'success');
+                playSound('success');
+                addActivity(cedulaValidation.clean, nameValidation.clean, 'REGISTRO');
+                
+                // Audit log para registros
+                auditLog('REGISTER_VOTE', { 
+                    cedula: cedulaValidation.clean, 
+                    nombre: nameValidation.clean,
+                    isUnknown,
+                    orden,
+                    mesa,
+                    referente,
+                    zona
+                });
+
+                const voter = demoMode ? demoData.get(cedulaValidation.clean) : null;
+                const infoBoxes = `
+                    <div class="flex gap-4 justify-center mb-4 flex-wrap">
+                        ${(voter?.orden || orden) ? `
+                            <div class="bg-white border-2 border-green-300 rounded-xl px-6 py-3 min-w-[120px] shadow-sm">
+                                <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">ORDEN</p>
+                                <p class="text-2xl md:text-3xl font-bold text-green-700 font-mono">${escapeHtml(String(voter?.orden || orden))}</p>
+                            </div>
+                        ` : ''}
+                        ${(voter?.mesa || mesa) ? `
+                            <div class="bg-white border-2 border-blue-300 rounded-xl px-6 py-3 min-w-[120px] shadow-sm">
+                                <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">MESA</p>
+                                <p class="text-2xl md:text-3xl font-bold text-blue-700 font-mono">${escapeHtml(String(voter?.mesa || mesa))}</p>
+                            </div>
+                        ` : ''}
+                        ${(voter?.zona_votacion || zona) ? `
+                            <div class="bg-white border-2 border-purple-300 rounded-xl px-6 py-3 min-w-[180px] shadow-sm">
+                                <p class="text-xs text-gray-500 uppercase tracking-wider mb-0.5">ZONA VOTACIÓN</p>
+                                <p class="text-lg md:text-xl font-bold text-purple-700">${escapeHtml(voter?.zona_votacion || zona)}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                const referenteInfo = (voter?.referente || referente) ? `<p class="text-xs text-gray-400 mt-2">Referente: <span class="font-medium text-gray-600">${escapeHtml(voter?.referente || referente)}</span></p>` : '';
+                $('#result-card').innerHTML = `
+                    <div class="card bg-green-50 border-2 border-green-200 p-6 md:p-8 text-center pulse-green">
+                        <div class="w-20 h-20 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">REGISTRO CONFIRMADO</p>
+                        <h3 class="text-3xl font-bold text-gray-900 mb-2">${escapeHtml(nameValidation.clean)}</h3>
+                        <p class="text-gray-500 mb-3">Cédula: <span class="font-mono font-medium text-gray-700">${escapeHtml(cedulaValidation.clean)}</span></p>
+                        ${infoBoxes}
+                        ${referenteInfo}
+                        <p class="text-sm text-gray-500">Registrado por: <strong>${escapeHtml(registradoPor)}</strong></p>
+                        <p class="text-sm text-green-700 font-medium mt-2">${formatDate(now)}</p>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    $('#result-section').classList.add('hidden');
+                    $('#cedula-input').focus();
+                }, 2000);
+
+            } catch (err) {
+                showToast(`Error al registrar: ${err.message}`, 'error');
+                playSound('error');
+                auditLog('REGISTER_VOTE_FAILED', { 
+                    cedula: cedulaValidation.clean, 
+                    error: err.message 
+                });
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        REGISTRAR
+                    `;
+                }
+            }
+        }
+
+        // ============================================
+        // IMPORTACIÓN EXCEL
+        // ============================================
+        function openImportModal() {
+            $('#import-modal').classList.add('flex');
+            $('#import-modal').classList.remove('hidden');
+            resetImportModal();
+        }
+
+        function closeImportModal() {
+            $('#import-modal').classList.add('hidden');
+            $('#import-modal').classList.remove('flex');
+            resetImportModal();
+        }
+
+        function resetImportModal() {
+            $('#excel-file').value = '';
+            $('#file-name').classList.add('hidden');
+            $('#file-name').textContent = '';
+            $('#import-preview').classList.add('hidden');
+            $('#import-progress').classList.add('hidden');
+            $('#import-result').classList.add('hidden');
+            $('#import-btn').disabled = true;
+            $('#progress-bar').style.width = '0%';
+            $('#progress-text').textContent = '0%';
+        }
+
+        $('#select-file').onclick = () => $('#excel-file').click();
+
+        $('#excel-file').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            $('#file-name').textContent = file.name;
+            $('#file-name').classList.remove('hidden');
+            previewExcel(file);
+        };
+
+        $('#select-file').ondragover = (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.add('border-green-500', 'bg-green-50');
+        };
+
+        $('#select-file').ondragleave = (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('border-green-500', 'bg-green-50');
+        };
+
+        $('#select-file').ondrop = (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('border-green-500', 'bg-green-50');
+            const file = e.dataTransfer.files[0];
+            if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+                $('#excel-file').files = e.dataTransfer.files;
+                $('#excel-file').dispatchEvent(new Event('change'));
+            }
+        };
+
+        function previewExcel(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const workbook = XLSX.read(e.target.result, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                    if (json.length === 0) {
+                        showToast('El archivo está vacío', 'warning');
+                        return;
+                    }
+
+                    // Normalizar nombres de columnas (case-insensitive)
+                    const normalized = json.map(row => {
+                        const keys = Object.keys(row);
+                        const cedulaKey = keys.find(k => k.toLowerCase() === 'cedula');
+                        const nombreKey = keys.find(k => k.toLowerCase() === 'nombre');
+                        const ordenKey = keys.find(k => k.toLowerCase() === 'orden');
+                        const mesaKey = keys.find(k => k.toLowerCase() === 'mesa');
+                        const referenteKey = keys.find(k => k.toLowerCase() === 'referente');
+                        const zonaKey = keys.find(k => k.toLowerCase() === 'zona_votacion' || k.toLowerCase() === 'zona');
+                        return {
+                            cedula: cedulaKey ? String(row[cedulaKey]).trim() : '',
+                            nombre: nombreKey ? String(row[nombreKey]).trim() : '',
+                            orden: ordenKey ? parseInt(String(row[ordenKey]).trim()) || null : null,
+                            mesa: mesaKey ? parseInt(String(row[mesaKey]).trim()) || null : null,
+                            referente: referenteKey ? String(row[referenteKey]).trim() : null,
+                            zona_votacion: zonaKey ? String(row[zonaKey]).trim() : null
+                        };
+                    }).filter(row => row.cedula && row.nombre);
+
+                    if (normalized.length === 0) {
+                        showToast('No se encontraron columnas "cedula" y "nombre" válidas', 'error');
+                        return;
+                    }
+
+                    // Mostrar preview
+                    const previewRows = $('#preview-rows');
+                    previewRows.innerHTML = normalized.slice(0, 5).map(row => `
+                        <tr class="border-b border-gray-200 last:border-0">
+                            <td class="py-2 px-2 font-mono text-gray-700">${escapeHtml(row.cedula)}</td>
+                            <td class="py-2 px-2 text-gray-900">${escapeHtml(row.nombre)}</td>
+                            <td class="py-2 px-2 text-gray-700">${row.orden != null ? escapeHtml(row.orden.toString()) : '-'}</td>
+                            <td class="py-2 px-2 text-gray-700">${row.mesa != null ? escapeHtml(row.mesa.toString()) : '-'}</td>
+                            <td class="py-2 px-2 text-gray-700">${escapeHtml(row.referente || '-')}</td>
+                            <td class="py-2 px-2 text-gray-700">${escapeHtml(row.zona_votacion || '-')}</td>
+                        </tr>
+                    `).join('');
+                    $('#preview-count').textContent = `Total de registros válidos: ${normalized.length.toLocaleString('es-ES')}${normalized.length > 5 ? ` (mostrando 5 de ${normalized.length})` : ''}`;
+                    $('#import-preview').classList.remove('hidden');
+                    $('#import-btn').disabled = false;
+                    $('#import-btn').dataset.json = JSON.stringify(normalized);
+                } catch (err) {
+                    showToast(`Error al leer Excel: ${err.message}`, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function importExcel() {
+            // Rate limiting para importación
+            const sessionKey = currentProfile?.id || currentUser?.id || 'anonymous';
+            try {
+                Security.checkRateLimit(`import:${sessionKey}`, 5, 300000); // 5 cada 5 minutos
+            } catch (rateErr) {
+                showToast(rateErr.message, 'warning');
+                return;
+            }
+
+            if (isImporting) return;
+            const data = JSON.parse($('#import-btn').dataset.json || '[]');
+            if (!data.length) return;
+
+            // Validar y sanitizar datos antes de importar
+            const validatedData = [];
+            for (const row of data) {
+                const cedulaValidation = Security.validateCedula(row.cedula);
+                const nameValidation = Security.validateName(row.nombre);
+                
+                if (!cedulaValidation.valid || !nameValidation.valid) {
+                    console.warn('Fila inválida omitida:', row);
+                    continue;
+                }
+                
+                let orden = null, mesa = null, referente = null, zona = null;
+                if (row.orden !== null) {
+                    const v = Security.validateNumber(row.orden, 1, 9999);
+                    if (v.valid) orden = v.clean;
+                }
+                if (row.mesa !== null) {
+                    const v = Security.validateNumber(row.mesa, 1, 9999);
+                    if (v.valid) mesa = v.clean;
+                }
+                if (row.referente) {
+                    const v = Security.validateText(row.referente, 50);
+                    if (v.valid) referente = v.clean;
+                }
+                if (row.zona_votacion) {
+                    const v = Security.validateText(row.zona_votacion, 100);
+                    if (v.valid) zona = v.clean;
+                }
+                
+                validatedData.push({
+                    cedula: cedulaValidation.clean,
+                    nombre: nameValidation.clean,
+                    orden,
+                    mesa,
+                    referente,
+                    zona_votacion: zona
+                });
+            }
+
+            // Deduplicate by cédula (keep last occurrence)
+            const seen = new Map();
+            validatedData.forEach(row => seen.set(row.cedula, row));
+            const dedupedData = Array.from(seen.values());
+            
+            if (dedupedData.length !== validatedData.length) {
+                showToast(`Se eliminaron ${validatedData.length - dedupedData.length} cédulas duplicadas`, 'info');
+            }
+
+            isImporting = true;
+            $('#import-btn').disabled = true;
+            $('#import-btn').textContent = 'Importando...';
+            $('#cancel-import').disabled = true;
+            $('#import-progress').classList.remove('hidden');
+            $('#import-result').classList.add('hidden');
+
+            const batchSize = 500;
+            let success = 0;
+            let errors = 0;
+
+            if (demoMode) {
+                for (let i = 0; i < dedupedData.length; i += batchSize) {
+                    const batch = dedupedData.slice(i, i + batchSize);
+                    const progress = Math.round(((i + batch.length) / dedupedData.length) * 100);
+                    $('#progress-bar').style.width = `${progress}%`;
+                    $('#progress-text').textContent = `${progress}%`;
+
+                    batch.forEach(row => {
+                        const existing = demoData.get(row.cedula);
+                        demoData.set(row.cedula, {
+                            cedula: row.cedula,
+                            nombre: row.nombre,
+                            orden: row.orden != null ? row.orden : existing?.orden || null,
+                            mesa: row.mesa != null ? row.mesa : existing?.mesa || null,
+                            referente: row.referente || existing?.referente || null,
+                            zona_votacion: row.zona_votacion || existing?.zona_votacion || null,
+                            ya_registrado: existing?.ya_registrado || false,
+                            fecha_registro: existing?.fecha_registro || null,
+                            registrado_por: existing?.registrado_por || null
+                        });
+                        success++;
+                    });
+                    await new Promise(r => setTimeout(r, 30));
+                }
+                await saveDemoData();
+                updateStats();
+            } else {
+                if (!sbClient) {
+                    showToast('No hay conexión a Supabase. Configure primero en "Config".', 'error');
+                    isImporting = false;
+                    $('#import-btn').disabled = false;
+                    $('#import-btn').textContent = 'Importar Padrón';
+                    $('#cancel-import').disabled = false;
+                    $('#import-progress').classList.add('hidden');
+                    return;
+                }
+                for (let i = 0; i < dedupedData.length; i += batchSize) {
+                    const batch = dedupedData.slice(i, i + batchSize);
+                    const progress = Math.round(((i + batch.length) / dedupedData.length) * 100);
+                    $('#progress-bar').style.width = `${progress}%`;
+                    $('#progress-text').textContent = `${progress}%`;
+
+                    try {
+                        const { error } = await sbClient
+                            .from('padron')
+                            .upsert(batch.map(r => ({
+                                cedula: r.cedula,
+                                nombre: r.nombre,
+                                orden: r.orden,
+                                mesa: r.mesa,
+                                referente: r.referente,
+                                zona_votacion: r.zona_votacion
+                            })), { onConflict: 'cedula' });
+                        if (error) throw error;
+                        success += batch.length;
+                    } catch (err) {
+                        errors += batch.length;
+                        console.error('Batch error:', err);
+                    }
+                    await new Promise(r => setTimeout(r, 50));
+                }
+            }
+
+            isImporting = false;
+            $('#import-progress').classList.add('hidden');
+            $('#import-result').classList.remove('hidden');
+
+            if (errors === 0) {
+                $('#import-result').className = 'mb-4 p-4 rounded-lg bg-green-50 border border-green-200';
+                $('#import-result').innerHTML = `
+                    <p class="font-medium text-green-800">✅ Importación completada</p>
+                    <p class="text-sm text-green-700 mt-1">${success.toLocaleString('es-ES')} registros procesados correctamente</p>
+                `;
+                showToast(`${success} registros importados correctamente`, 'success');
+                auditLog('IMPORT_SUCCESS', { count: success });
+                updateStats();
+                setTimeout(() => {
+                    closeImportModal();
+                    openViewDataModal();
+                }, 1500);
+            } else {
+                $('#import-result').className = 'mb-4 p-4 rounded-lg bg-amber-50 border border-amber-200';
+                $('#import-result').innerHTML = `
+                    <p class="font-medium text-amber-800">⚠️ Importación completada con errores</p>
+                    <p class="text-sm text-amber-700 mt-1">Éxitos: ${success.toLocaleString('es-ES')} | Errores: ${errors.toLocaleString('es-ES')}</p>
+                `;
+                showToast(`${errors} registros fallaron`, 'warning');
+                auditLog('IMPORT_PARTIAL', { success, errors });
+            }
+
+            $('#import-btn').disabled = false;
+            $('#import-btn').textContent = 'Importar Padrón';
+            $('#cancel-import').disabled = false;
+        }
+
+        // ============================================
+        // CONFIGURACIÓN
+        // ============================================
+        async function loadSavedConfig() {
+            const saved = localStorage.getItem(CONFIG_KEY);
+            if (saved) {
+                try {
+                    const { url, key } = JSON.parse(saved);
+                    if (url && key) {
+                        // Clean URL in case old config had /rest/v1/
+                        let cleanUrl = url.replace(/\/+$/, '');
+                        if (cleanUrl.includes('/rest/v1')) {
+                            cleanUrl = cleanUrl.replace(/\/rest\/v1.*$/, '');
+                            saveConfig(cleanUrl, key);
+                        }
+                        return await initSupabase(cleanUrl, key);
+                    }
+                } catch {}
+            }
+            return false;
+        }
+
+        function saveConfig(url, key) {
+            localStorage.setItem(CONFIG_KEY, JSON.stringify({ url, key }));
+        }
+
+        function openConfigModal() {
+            $('#config-modal').classList.add('flex');
+            $('#config-modal').classList.remove('hidden');
+            const saved = localStorage.getItem(CONFIG_KEY);
+            if (saved) {
+                try {
+                    const { url, key } = JSON.parse(saved);
+                    $('#supabase-url').value = url;
+                    $('#supabase-key').value = key;
+                } catch {}
+            }
+            $('#supabase-url').focus();
+        }
+
+        function closeConfigModal() {
+            $('#config-modal').classList.add('hidden');
+            $('#config-modal').classList.remove('flex');
+        }
+
+        function handleSaveConfig() {
+            const url = $('#supabase-url').value.trim();
+            const key = $('#supabase-key').value.trim();
+
+            if (!url || !key) {
+                showToast('Complete ambos campos', 'warning');
+                return;
+            }
+
+            if (!url.startsWith('http')) {
+                showToast('La URL debe comenzar con http:// o https://', 'warning');
+                return;
+            }
+
+            // Normalize URL: remove trailing slash and /rest/v1/ if present
+            let cleanUrl = url.replace(/\/+$/, '');
+            if (cleanUrl.includes('/rest/v1')) {
+                cleanUrl = cleanUrl.replace(/\/rest\/v1.*$/, '');
+                showToast('URL corregida: se quitó /rest/v1/', 'info');
+            }
+
+            saveConfig(cleanUrl, key);
+            closeConfigModal();
+            initSupabase(cleanUrl, key);
+        }
+
+        // ============================================
+        // ESCAPE HTML
+        // ============================================
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function copyToClipboard(text, message = 'Copiado') {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(message, 'success', 2000);
+            }).catch(() => {
+                showToast('Error al copiar', 'error');
+            });
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        function initEvents() {
+            // Config
+            $('#open-config').onclick = openConfigModal;
+            $('#close-config').onclick = closeConfigModal;
+            $('#skip-config').onclick = () => {
+                closeConfigModal();
+                showToast('Configuración omitida. Podrá configurar después.', 'info');
+            };
+            $('#clear-config').onclick = () => {
+                closeConfigModal();
+                $('#confirm-clear-modal').classList.remove('hidden');
+                $('#confirm-clear-modal').classList.add('flex');
+            };
+            $('#cancel-clear-config').onclick = () => {
+                $('#confirm-clear-modal').classList.add('hidden');
+                $('#confirm-clear-modal').classList.remove('flex');
+            };
+            $('#confirm-clear-config').onclick = () => {
+                localStorage.removeItem(CONFIG_KEY);
+                if (sbClient) {
+                    try { sbClient.auth.signOut(); } catch {}
+                    sbClient = null;
+                    channel = null;
+                }
+                updateConnectionStatus(false);
+                $('#confirm-clear-modal').classList.add('hidden');
+                $('#confirm-clear-modal').classList.remove('flex');
+                showToast('Configuración borrada. Vuelva a ingresar credenciales.', 'info');
+            };
+            $('#save-config').onclick = handleSaveConfig;
+            $('#supabase-url').onkeydown = $('#supabase-key').onkeydown = (e) => {
+                if (e.key === 'Enter') handleSaveConfig();
+            };
+
+            // Toggle mode
+            $('#toggle-mode').onclick = () => {
+                if (demoMode) {
+                    switchToSupabase();
+                } else {
+                    enableDemoMode();
+                }
+            };
+
+            // Import
+            $('#open-import').onclick = openImportModal;
+            $('#close-import').onclick = closeImportModal;
+            $('#cancel-import').onclick = closeImportModal;
+            $('#import-btn').onclick = importExcel;
+
+            // Search
+            $('#search-btn').onclick = () => searchCedula($('#cedula-input').value);
+            $('#cedula-input').onkeydown = (e) => {
+                if (e.key === 'Enter') searchCedula(e.target.value);
+            };
+            $('#cedula-input').oninput = (e) => {
+                const val = e.target.value.replace(/[^\d]/g, '').slice(0, 8);
+                e.target.value = val;
+                // Visual feedback for PY cédula length (7-8 dígitos)
+                e.target.classList.toggle('border-amber-400', val.length > 0 && val.length < 7);
+                e.target.classList.toggle('border-green-400', val.length >= 7);
+                e.target.classList.toggle('border-gray-200', val.length === 0);
+            };
+            $('#clear-activity').onclick = () => {
+                activityLog = [];
+                renderActivity();
+                saveActivityLog();
+                showToast('Actividad reciente limpiada', 'info');
+            };
+
+            // Register unknown modal
+            $('#close-unknown').onclick = closeRegisterUnknownModal;
+            $('#cancel-unknown').onclick = closeRegisterUnknownModal;
+            $('#confirm-unknown').onclick = confirmRegisterUnknown;
+            $('#unknown-nombre').onkeydown = (e) => {
+                if (e.key === 'Enter') confirmRegisterUnknown();
+            };
+
+            // Log modal
+            $('#menu-log').onclick = openLogModal;
+            $('#close-log').onclick = closeLogModal;
+            $('#log-close-bottom').onclick = closeLogModal;
+            $('#log-filter-user').onchange = renderLogModal;
+            $('#log-filter-action').onchange = renderLogModal;
+            $('#log-clear-filters').onclick = () => {
+                $('#log-filter-user').value = '';
+                $('#log-filter-action').value = '';
+                renderLogModal();
+            };
+            $('#log-export').onclick = exportLogCSV;
+
+            // View Data modal
+            $('#menu-view-data').onclick = openViewDataModal;
+            $('#close-view-data').onclick = closeViewDataModal;
+            $('#view-data-close-bottom').onclick = closeViewDataModal;
+            $('#view-data-search').oninput = renderViewDataModal;
+            $('#view-data-filter-status').onchange = renderViewDataModal;
+            $('#view-data-export').onclick = exportViewDataCSV;
+
+            // Menu dropdown
+            $('#menu-btn').onclick = toggleMenuDropdown;
+            document.addEventListener('click', (e) => {
+                if (!$('#menu-dropdown').contains(e.target)) {
+                    closeMenuDropdown();
+                }
+            });
+
+            // Refresh stats
+            $('#menu-refresh-stats').onclick = () => {
+                closeMenuDropdown();
+                updateStats();
+                showToast('Estadísticas actualizadas', 'info');
+            };
+
+            // Export backup
+            $('#menu-export-backup').onclick = () => {
+                closeMenuDropdown();
+                exportBackup();
+            };
+
+            // Import backup
+            $('#menu-import-backup').onclick = () => {
+                closeMenuDropdown();
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => importBackup(e.target.files[0]);
+                input.click();
+            };
+
+            // Login modal (Auth)
+            $('#login-btn').onclick = handleLogin;
+            $('#login-email').onkeydown = $('#login-password').onkeydown = (e) => {
+                if (e.key === 'Enter') handleLogin();
+            };
+            $('#show-register-btn').onclick = showRegisterForm;
+            $('#show-login-btn').onclick = showLoginForm;
+            $('#login-config-btn').onclick = openConfigModal;
+            $('#register-btn').onclick = handleRegister;
+            $('#reg-email').onkeydown = $('#reg-password').onkeydown = $('#reg-name').onkeydown = $('#reg-sede').onkeydown = (e) => {
+                if (e.key === 'Enter') handleRegister();
+            };
+            $('#switch-user').onclick = switchUser;
+
+            // Focus input on load
+            setTimeout(() => $('#cedula-input')?.focus(), 100);
+        }
+
+        function updateModeButton() {
+            const btn = $('#toggle-mode');
+            const text = $('#mode-text');
+            if (demoMode) {
+                btn.className = 'px-3 py-1.5 text-sm bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg flex items-center gap-1 transition-colors';
+                text.textContent = 'Modo Demo';
+                btn.title = 'Cambiar a Supabase';
+            } else {
+                btn.className = 'px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg flex items-center gap-1 transition-colors';
+                text.textContent = 'Supabase';
+                btn.title = 'Cambiar a Modo Demo';
+            }
+        }
+
+        // ============================================
+        // INICIALIZACIÓN
+        // ============================================
+        async function init() {
+            try {
+                initEvents();
+                await loadActivityLog();
+
+                // Online/Offline detection
+                window.addEventListener('online', () => {
+                    $('#offline-banner').classList.add('hidden');
+                    if (!demoMode && sbClient) updateStats();
+                    showToast('Conexión restablecida', 'success');
+                });
+                window.addEventListener('offline', () => {
+                    $('#offline-banner').classList.remove('hidden');
+                    showToast('Sin conexión — modo offline', 'warning', 5000);
+                });
+                if (!navigator.onLine) $('#offline-banner').classList.remove('hidden');
+
+                // MODO PRODUCCIÓN: Auto-conectar a Supabase si PRODUCTION_CONFIG.enabled = true
+                if (PRODUCTION_CONFIG.enabled && PRODUCTION_CONFIG.url && PRODUCTION_CONFIG.key) {
+                    // Guardar en localStorage para persistencia
+                    saveConfig(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
+                    const connected = await initSupabase(PRODUCTION_CONFIG.url, PRODUCTION_CONFIG.key);
+                    if (connected) {
+                        // No mostrar botón de modo demo
+                        $('#toggle-mode').style.display = 'none';
+                        await checkLoginAndInit();
+                    } else {
+                        showToast('No se pudo conectar a Supabase. Se activa el Modo Demo.', 'warning', 6000);
+                        await enableDemoMode();
+                    }
+                } else if (await loadSavedConfig()) {
+                    // Config guardada en localStorage y conexión OK
+                    await checkLoginAndInit();
+                } else {
+                    // Sin config o Supabase caído: fallback a modo demo
+                    if (localStorage.getItem(CONFIG_KEY)) {
+                        showToast('Supabase no responde. Se activa el Modo Demo.', 'warning', 6000);
+                    }
+                    await enableDemoMode();
+                }
+            } catch (err) {
+                console.error('Init error:', err);
+                // Ensure login modal is shown even on error
+                $('#app').classList.add('hidden');
+                openLoginModal();
+            }
+        }
+
+        // Start
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>

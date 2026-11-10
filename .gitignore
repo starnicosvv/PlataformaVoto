@@ -1,0 +1,91 @@
+# ============================================
+# Datos de clientes, padrones y planillas (CONFIDENCIAL)
+# ============================================
+*.xlsx
+*.xls
+*.csv
+*.tsv
+~$*.xlsx
+~$*.xls
+temp_data.json
+padron_*.xlsx
+datos_*.xlsx
+Reporte_*.xlsx
+Libro*.xlsx
+para imprimir*.xlsx
+
+# Scripts de conversión y procesos específicos de clientes
+convert_*.js
+fix_*.py
+
+# Backups y volcados de datos
+*.dump
+*.sql
+*.backup
+backup_*.json
+padron_backup_*.json
+
+# ============================================
+# Dependencias y entornos
+# ============================================
+node_modules/
+package-lock.json.bak
+.pnp
+.pnp.js
+
+# ============================================
+# Secretos, credenciales y configuración local
+# ============================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+supabase_config_*.json
+
+# ============================================
+# Proyectos anidados / No relacionados
+# ============================================
+portfolio-temp/
+starnicosvv-profile/
+*.architect
+*.architect~
+
+# ============================================
+# Archivos de pruebas y temporales locales
+# ============================================
+cdp-*.js
+test-*.js
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# ============================================
+# Logs y depuración
+# ============================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ============================================
+# Sistema operativo y editores
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
