@@ -1,13 +1,18 @@
 # 🗳️ Plataforma de Control de Padrón Electoral y Confirmación de Votos
 
-[![Licencia](https://img.shields.io/badge/licencia-MIT-green.svg)](LICENSE)
-[![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)](#)
-[![JavaScript](https://img.shields.io/badge/JavaScript-Vanilla%20ES6+-F7DF1E?logo=javascript&logoColor=black)](#)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)](#)
-[![Supabase](https://img.shields.io/badge/Supabase-Realtime%20%26%20Auth-3ECF8E?logo=supabase&logoColor=white)](#)
-[![Offline Ready](https://img.shields.io/badge/Offline-Modo%20Demo%20Listo-blue.svg)](#)
+[![Demo en vivo](https://img.shields.io/badge/Demo-plataformavoto.vercel.app-2dd4bf?style=for-the-badge&logo=vercel&logoColor=white)](https://plataformavoto.vercel.app)
+[![Licencia](https://img.shields.io/badge/licencia-MIT-green?style=flat-square)](LICENSE)
+[![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)](#)
+[![JavaScript](https://img.shields.io/badge/JavaScript-Vanilla%20ES6+-F7DF1E?style=flat-square&logo=javascript&logoColor=black)](#)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](#)
+[![Supabase](https://img.shields.io/badge/Supabase-Realtime%20%26%20Auth-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](#)
+[![Offline Ready](https://img.shields.io/badge/Offline-Modo%20Demo%20Listo-blue?style=flat-square)](#)
+
+> **Proyecto freelance** desarrollado para un cliente.
 
 Sistema web profesional de alto rendimiento y arquitectura de archivo único (`index.html`), diseñado para la gestión, verificación y confirmación de votos en tiempo real durante jornadas electorales. Permite la operación distribuida y simultánea de múltiples operadores y sedes, sincronizando de forma instantánea el estado de cada elector para prevenir el doble voto y auditar la participación.
+
+🌐 **Demo en vivo:** [plataformavoto.vercel.app](https://plataformavoto.vercel.app)
 
 ---
 
